@@ -46,6 +46,7 @@ Once steps 1–3 are done, the owner opens the page, signs in, goes to **Setting
 
 - **Call Audits**: one item per audited lead. The `Phone` column is indexed and **enforces unique values**, so a lead can't be audited twice. The other columns are `LeadId, Agent, AgentHeard, Category, TalkBand, Source, City, Campaign, Interested, WhyNoSale, SubmittedAt` and `RecordJson`, which holds the full audit.
 - **Call Audit Settings**: the questionnaire dropdown lists, pre-filled.
+- **Call Audit Users**: who may open the tool and which tabs each person sees (`Email` unique, `DisplayName`, `Tabs`, `IsAdmin`, `Active`). It starts with the owners from `config.js` as admins. Admins manage it on the page's **Users** tab.
 
 The owner then uploads `leads.json` (Settings → Lead pool). It is saved to `Documents/CallAudit/leads.json`.
 
@@ -60,16 +61,24 @@ Auditors must be able to read everything and **add** audits, but not edit or del
    - Site permissions: **View Pages**, **Browse User Information**, **Use Remote Interfaces**, **Open**
    - Leave **Edit Items** and **Delete Items** unticked.
 3. **Call Audits list** → List settings → Permissions for this list → **Stop Inheriting Permissions** → grant the auditors group **Add and View**. Owners keep Full Control.
-4. Leave **Call Audit Settings** and **Documents** inheriting: auditors read, owners edit.
+4. Leave **Call Audit Settings**, **Call Audit Users** and **Documents** inheriting: everyone reads, owners edit. Everyone must be able to read **Call Audit Users**, because the page reads it to decide which tabs each person sees.
+5. **Viewers**, meaning people given only All Audits / Auditors / Coverage on the Users tab: keep them in Visitors (Read) and do **not** give them **Add and View** on Call Audits.
+6. **Admins** added on the Users tab also need **Edit** or **Full Control** on the site. Otherwise SharePoint refuses their edit, delete and settings changes.
+
+### Two layers of access
+
+- **The page's Users tab** decides who can open the tool and which tabs they see.
+- **SharePoint permissions** decide what anyone can actually read or change, including through SharePoint itself. Keep the two in line: auditors get Add and View, viewers get Read, admins get Edit or Full Control.
 
 Result:
 
-| | Auditors | Owners |
-|---|---|---|
-| See all audits | ✔ | ✔ |
-| Submit an audit | ✔ | ✔ |
-| Edit or delete an audit | ✘ | ✔ |
-| Change questionnaire lists or the lead pool | ✘ | ✔ |
+| | Viewers | Auditors | Admins |
+|---|---|---|---|
+| Tabs | All Audits, Auditors, Coverage (as ticked) | + New Audit | All, including Settings and Users |
+| See all audits | ✔ | ✔ | ✔ |
+| Submit an audit | ✘ | ✔ | ✔ |
+| Edit or delete an audit, download | ✘ | ✘ | ✔ |
+| Change questionnaire lists, lead pool or users | ✘ | ✘ | ✔ |
 
 ## 6. Check
 

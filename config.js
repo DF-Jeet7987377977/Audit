@@ -9,8 +9,10 @@ window.AUDIT_CONFIG = {
   sitePath: "/sites/CallAudit",                               // change if IT names the site differently
   auditsList: "Call Audits",
   settingsList: "Call Audit Settings",
+  usersList: "Call Audit Users",                              // who may open the tool, and which tabs they see
   poolFolder: "CallAudit",                                    // folder in the site's Documents library for leads.json
 
-  // People who see Settings, Edit, Delete and Download. SharePoint permissions enforce the same rule.
+  // Permanent admins: always see every tab (Settings, Users, Edit, Delete, Download), even if missing
+  // from the Users list, so nobody can be locked out. Everyone else is managed on the Users tab.
   owners: ["simran.singh@dreamfolks.com"],
 };

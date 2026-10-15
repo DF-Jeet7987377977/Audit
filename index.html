@@ -37,6 +37,9 @@
 html,body{margin:0}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--tx);font-family:var(--f-body);font-size:14px;line-height:1.5}
+/* Tabs and sections stay hidden until sign-in decides what this person may see. */
+body:not([data-access="ok"]) .tabs,body:not([data-access="ok"]) main>section{display:none!important}
+#users-body input[type=checkbox]{width:18px;height:18px;accent-color:var(--p)}
 h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;font-weight:700}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -175,6 +178,7 @@ td.r,th.r{text-align:right}
       <button role="tab" id="tab-auditors" data-tab="auditors" aria-selected="false">Auditors</button>
       <button role="tab" id="tab-coverage" data-tab="coverage" aria-selected="false">Coverage</button>
       <button role="tab" id="tab-settings" data-tab="settings" aria-selected="false" hidden>Settings</button>
+      <button role="tab" id="tab-users" data-tab="users" aria-selected="false" hidden>Users</button>
     </nav>
   </div>
 </header>
@@ -259,10 +263,33 @@ td.r,th.r{text-align:right}
         <span class="muted" id="pool-msg" role="status"></span></div>
     </div>
     <div class="card stack">
-      <div><h2>Questionnaire lists</h2><p class="sub">Only owners see this tab. One option per line, written as <b>Level 1 &gt; Level 2</b>. Changes apply to new audits. Saved audits keep the text they were submitted with.</p></div>
+      <div><h2>Questionnaire lists</h2><p class="sub">Only admins see this tab. One option per line, written as <b>Level 1 &gt; Level 2</b>. Changes apply to new audits. Saved audits keep the text they were submitted with.</p></div>
       <div id="set-sections" class="grid2"></div>
       <div><label class="lbl" for="set-services">Q4 services (one per line)</label><textarea id="set-services" rows="8"></textarea></div>
       <div class="row"><button class="btn primary" id="set-save">Save lists</button><span class="muted" id="set-msg"></span></div>
+    </div>
+  </section>
+
+  <!-- USERS -->
+  <section id="view-users" class="stack" hidden>
+    <div class="card stack">
+      <div><h2>Users and tab access</h2><p class="sub">Only people listed here can open the tool. Tick the tabs each person sees. Admins see every tab, including Settings and Users, and can edit, delete and download audits. A change applies the next time that person opens or reloads the tool.</p></div>
+      <form id="user-add" class="filters" autocomplete="off" novalidate>
+        <div><label class="lbl" for="u-email">Work email</label><input type="text" id="u-email" placeholder="name@dreamfolks.com"></div>
+        <div><label class="lbl" for="u-name">Name</label><input type="text" id="u-name" placeholder="Full name"></div>
+        <div><label class="lbl" for="u-role">Starting access</label>
+          <select id="u-role">
+            <option value="Auditor">Auditor: New Audit, All Audits, Auditors, Coverage</option>
+            <option value="Viewer">Viewer: All Audits, Auditors, Coverage</option>
+            <option value="Admin">Admin: every tab</option>
+          </select></div>
+        <div style="align-self:end"><button class="btn primary" type="submit" id="u-add">Add user</button></div>
+      </form>
+      <span class="muted" id="u-msg" role="status"></span>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Name</th><th>Email</th><th>New Audit</th><th>All Audits</th><th>Auditors</th><th>Coverage</th><th>Admin</th><th>Active</th><th></th></tr></thead>
+        <tbody id="users-body"></tbody>
+      </table></div>
     </div>
   </section>
 </main>
@@ -308,9 +335,10 @@ function bandRank(b) { const i = BAND_ORDER.indexOf(b); return i < 0 ? 99 : i; }
 /* ---------- tabs ---------- */
 document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
 function setTab(t) {
+  if (S.allowed && !S.allowed.has(t)) t = [...S.allowed][0];
   S.tab = t;
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
-  for (const v of ["new", "all", "auditors", "coverage", "settings"]) $("#view-" + v).hidden = v !== t;
+  for (const v of ["new", "all", "auditors", "coverage", "settings", "users"]) $("#view-" + v).hidden = v !== t;
   try { localStorage.setItem("dfca-tab", t); } catch (e) {}
   render();
 }
@@ -442,7 +470,9 @@ async function findLists() {
   const lists = await listAll(`/sites/${S.sp.siteId}/lists?$select=id,displayName&$top=200`);
   S.sp.audits = lists.find(l => l.displayName === CFG.auditsList)?.id || null;
   S.sp.settings = lists.find(l => l.displayName === CFG.settingsList)?.id || null;
+  S.sp.users = lists.find(l => l.displayName === (CFG.usersList || "Call Audit Users"))?.id || null;
 }
+const listsReady = () => !!(S.sp?.audits && S.sp?.settings && S.sp?.users);
 async function createLists() {
   const base = `/sites/${S.sp.siteId}/lists`;
   if (!S.sp.audits) {
@@ -453,9 +483,113 @@ async function createLists() {
     const l = await gx(base, { method: "POST", body: JSON.stringify({ displayName: CFG.settingsList, list: { template: "genericList" }, columns: [{ name: "Value", text: { allowMultipleLines: true } }] }) });
     S.sp.settings = l.id;
   }
+  if (!S.sp.users) {
+    const l = await gx(base, { method: "POST", body: JSON.stringify({ displayName: CFG.usersList || "Call Audit Users", list: { template: "genericList" }, columns: USER_COLUMNS }) });
+    S.sp.users = l.id;
+    S.users = new Map();
+    for (const email of (CFG.owners || []).map(o => o.toLowerCase())) {
+      await saveUser({ email, name: email === S.me.email ? S.me.name : "", tabs: [...ROLE_TABS.Admin], admin: true, active: true });
+    }
+  }
+  await loadSettings();
   if (!S.cfg.taxonomy) await saveSetting("taxonomy", { sections: DEFAULT_TAXONOMY });
   if (!S.cfg.services) await saveSetting("services", { services: DEFAULT_SERVICES });
 }
+
+/* ---------- users and tab access ---------- */
+/* "Call Audit Users" list: one item per person. The page shows only the tabs a person is given.
+   SharePoint permissions (IT-SETUP.md) are what actually stop someone changing data. */
+const WORK_TABS = [["new", "New Audit"], ["all", "All Audits"], ["auditors", "Auditors"], ["coverage", "Coverage"]];
+const ADMIN_TABS = ["settings", "users"];
+const ROLE_TABS = { Auditor: ["new", "all", "auditors", "coverage"], Viewer: ["all", "auditors", "coverage"], Admin: ["new", "all", "auditors", "coverage"] };
+const USER_COLUMNS = [
+  { name: "Email", text: {}, indexed: true, enforceUniqueValues: true },
+  { name: "DisplayName", text: {} }, { name: "Tabs", text: {} },
+  { name: "IsAdmin", boolean: {} }, { name: "Active", boolean: {} },
+];
+const isConfigOwner = email => (CFG.owners || []).map(o => o.toLowerCase()).includes(email);
+async function loadUsers() {
+  const items = await listAll(`/sites/${S.sp.siteId}/lists/${S.sp.users}/items?$expand=fields($select=Email,DisplayName,Tabs,IsAdmin,Active)&$top=999`);
+  S.users = new Map();
+  for (const it of items) {
+    const f = it.fields, email = String(f.Email || "").trim().toLowerCase();
+    if (!email) continue;
+    S.users.set(email, { id: it.id, email, name: f.DisplayName || "", tabs: String(f.Tabs || "").split(",").map(x => x.trim()).filter(Boolean), admin: !!f.IsAdmin, active: f.Active !== false });
+  }
+}
+async function saveUser(u) {
+  const fields = { Title: u.email, Email: u.email, DisplayName: u.name || "", Tabs: u.tabs.join(","), IsAdmin: !!u.admin, Active: !!u.active };
+  const base = `/sites/${S.sp.siteId}/lists/${S.sp.users}/items`;
+  if (u.id) await gx(`${base}/${u.id}/fields`, { method: "PATCH", body: JSON.stringify(fields) });
+  else u.id = (await gx(base, { method: "POST", body: JSON.stringify({ fields }) })).id;
+  S.users.set(u.email, u);
+}
+/* Decide what this person sees. Returns false when they have no access at all. */
+function applyAccess() {
+  const u = S.users?.get(S.me.email), active = !!(u && u.active);
+  S.me.isOwner = isConfigOwner(S.me.email) || (active && u.admin);
+  const tabs = S.me.isOwner ? [...ROLE_TABS.Admin, ...ADMIN_TABS] : active ? WORK_TABS.map(t => t[0]).filter(t => u.tabs.includes(t)) : [];
+  S.allowed = new Set(tabs);
+  document.querySelectorAll(".tabs button").forEach(b => b.hidden = !S.allowed.has(b.dataset.tab));
+  $("#btn-export").hidden = !S.me.isOwner;
+  $("#chip-me").innerHTML = `<b>${esc(S.me.name || "You")}</b>${S.me.isOwner ? " · admin" : ""}`;
+  document.body.dataset.access = tabs.length ? "ok" : "none";
+  if (!tabs.length) {
+    showGlobal(u && !u.active ? `Your access to the Call Audit tool is switched off (${S.me.email}). Ask an admin if you need it back.`
+      : `You don't have access to the Call Audit tool yet. Ask an admin to add ${S.me.email} on the Users tab.`);
+    return false;
+  }
+  setTab(S.tab);
+  return true;
+}
+function renderUsers() {
+  if (!S.me.isOwner || !S.users) return;
+  const users = [...S.users.values()].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+  const box = (u, f, on, off, label) => `<input type="checkbox" data-u="${esc(u.email)}" data-f="${f}" ${on ? "checked" : ""} ${off ? "disabled" : ""} aria-label="${esc(label)} for ${esc(u.email)}">`;
+  $("#users-body").innerHTML = users.length ? users.map(u => {
+    const self = u.email === S.me.email, pinned = isConfigOwner(u.email);
+    return `<tr>
+      <td>${esc(u.name || "—")}${pinned ? ` <span class="pill" title="Listed as an owner in config.js">owner</span>` : ""}</td><td>${esc(u.email)}</td>
+      ${WORK_TABS.map(([k, label]) => `<td>${box(u, "tab:" + k, u.admin || u.tabs.includes(k), u.admin, label)}</td>`).join("")}
+      <td>${box(u, "admin", u.admin, self || pinned, "Admin")}</td><td>${box(u, "active", u.active, self || pinned, "Active")}</td>
+      <td data-rm="${esc(u.email)}">${self || pinned ? "" : `<button class="btn small danger" type="button" data-remove="${esc(u.email)}">Remove</button>`}</td></tr>`;
+  }).join("") : `<tr><td colspan="9"><div class="empty"><b>No users yet</b>Add the first person above.</div></td></tr>`;
+}
+$("#users-body").addEventListener("change", async e => {
+  const el = e.target; if (!el.dataset.u || !S.me.isOwner) return;
+  const u = S.users.get(el.dataset.u); if (!u) return;
+  const before = structuredClone(u), f = el.dataset.f;
+  if (f === "admin") u.admin = el.checked;
+  else if (f === "active") u.active = el.checked;
+  else { const k = f.slice(4); u.tabs = el.checked ? [...new Set([...u.tabs, k])] : u.tabs.filter(t => t !== k); }
+  try { await saveUser(u); toast(`Saved access for ${u.name || u.email}.`); }
+  catch (err) { S.users.set(u.email, before); toast("That change wasn't saved: " + err.message); }
+  renderUsers();
+});
+$("#users-body").addEventListener("click", async e => {
+  const rm = e.target.closest("[data-remove]"), yes = e.target.closest("[data-yes-rm]"), no = e.target.closest("[data-no-rm]");
+  if (rm) { rm.parentElement.innerHTML = `<span class="row" style="gap:6px;flex-wrap:nowrap">Remove? <button class="btn small danger" type="button" data-yes-rm="${esc(rm.dataset.remove)}">Remove</button><button class="btn small" type="button" data-no-rm>Keep</button></span>`; return; }
+  if (no) { renderUsers(); return; }
+  if (yes) {
+    const u = S.users.get(yes.dataset.yesRm); if (!u || !S.me.isOwner) return;
+    try { await gx(`/sites/${S.sp.siteId}/lists/${S.sp.users}/items/${u.id}`, { method: "DELETE" }); S.users.delete(u.email); toast(`Removed ${u.name || u.email}.`); }
+    catch (err) { toast("Couldn't remove: " + err.message); }
+    renderUsers();
+  }
+});
+$("#user-add").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!S.me.isOwner) return;
+  const email = $("#u-email").value.trim().toLowerCase(), name = $("#u-name").value.trim(), role = $("#u-role").value, msg = $("#u-msg");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Enter a valid work email address."; return; }
+  if (S.users.has(email)) { msg.textContent = `${email} is already on the list. Change their tabs in the table.`; return; }
+  $("#u-add").disabled = true; msg.textContent = "Adding…";
+  try {
+    await saveUser({ email, name, tabs: [...ROLE_TABS[role]], admin: role === "Admin", active: true });
+    $("#u-email").value = ""; $("#u-name").value = ""; msg.textContent = `Added ${name || email} as ${role}.`;
+  } catch (err) { msg.textContent = "Couldn't add the user: " + err.message; }
+  finally { $("#u-add").disabled = false; renderUsers(); }
+});
 
 /* Settings list: one item per key (Title), JSON in Value. */
 async function loadSettings() {
@@ -500,19 +634,28 @@ async function loadAudits() {
 async function connect() {
   const me = await gx("/me?$select=id,displayName,mail,userPrincipalName");
   const email = (me.mail || me.userPrincipalName || "").toLowerCase();
-  S.me = { id: me.id, name: me.displayName, email, isOwner: (CFG.owners || []).map(o => o.toLowerCase()).includes(email) };
-  $("#chip-me").innerHTML = `<b>${esc(me.displayName || "You")}</b>${S.me.isOwner ? " · owner" : ""}`;
-  $("#tab-settings").hidden = !S.me.isOwner;
-  $("#btn-export").hidden = !S.me.isOwner;
+  S.me = { id: me.id, name: me.displayName, email, isOwner: isConfigOwner(email) };
+  $("#chip-me").innerHTML = `<b>${esc(me.displayName || "You")}</b>`;
   const site = await gx(`/sites/${CFG.siteHost}:${CFG.sitePath}`);
-  S.sp = { siteId: site.id, audits: null, settings: null };
+  S.sp = { siteId: site.id, audits: null, settings: null, users: null };
   await findLists();
-  renderSetup();
-  if (!S.sp.audits || !S.sp.settings) {
+  if (!listsReady()) {
     S.dbState = "off";
-    showGlobal(S.me.isOwner ? "The SharePoint lists don't exist yet. Open Settings and choose Create the SharePoint lists." : "The Call Audit tool isn't set up yet. Ask an owner to finish the SharePoint setup.");
+    if (S.me.isOwner) {
+      // Only the setup card is useful until the lists exist.
+      S.allowed = new Set(["settings"]);
+      document.querySelectorAll(".tabs button").forEach(b => b.hidden = b.dataset.tab !== "settings");
+      document.body.dataset.access = "ok"; setTab("settings"); renderSetup();
+      showGlobal("Some SharePoint lists don't exist yet. In Settings, choose Create the SharePoint lists.");
+    } else {
+      document.body.dataset.access = "none";
+      showGlobal("The Call Audit tool isn't set up yet. Ask an admin to finish the SharePoint setup.");
+    }
     render(); return;
   }
+  await loadUsers();
+  if (!applyAccess()) { S.dbState = "off"; render(); return; }
+  renderSetup();
   await Promise.all([loadSettings(), loadAudits(), loadPool().catch(e => showGlobal("The lead pool didn't load: " + e.message))]);
   setInterval(() => { if (!document.hidden) loadAudits().catch(dbErr); }, 60000);
 }
@@ -524,10 +667,11 @@ function dbErr(e) {
 function showGlobal(msg) { const b = $("#global-banner"); b.textContent = msg; b.hidden = false; }
 function renderSetup() {
   if (!S.me.isOwner) return;
-  const ready = S.sp?.audits && S.sp?.settings;
+  const ready = listsReady();
+  const names = `"${CFG.auditsList}", "${CFG.settingsList}" and "${CFG.usersList || "Call Audit Users"}"`;
   $("#setup-sub").textContent = ready
-    ? `Connected to ${CFG.siteHost}${CFG.sitePath}: "${CFG.auditsList}" and "${CFG.settingsList}" lists are in place.`
-    : `The site ${CFG.siteHost}${CFG.sitePath} has no "${CFG.auditsList}" / "${CFG.settingsList}" lists yet. Create them here, then set auditor permissions as described in IT-SETUP.md.`;
+    ? `Connected to ${CFG.siteHost}${CFG.sitePath}. The ${names} lists are in place.`
+    : `The site ${CFG.siteHost}${CFG.sitePath} is missing some of the ${names} lists. Create them here, then set permissions as described in IT-SETUP.md.`;
   $("#btn-setup").hidden = !!ready;
 }
 $("#btn-setup").addEventListener("click", async () => {
@@ -535,8 +679,9 @@ $("#btn-setup").addEventListener("click", async () => {
   try {
     await createLists();
     msg.textContent = "Lists created."; $("#global-banner").hidden = true;
-    renderSetup();
+    await loadUsers(); applyAccess(); renderSetup();
     await Promise.all([loadSettings(), loadAudits(), loadPool()]);
+    setInterval(() => { if (!document.hidden) loadAudits().catch(dbErr); }, 60000);
   } catch (e) { msg.textContent = "Couldn't create the lists: " + e.message; }
   finally { btn.disabled = false; }
 });
@@ -561,6 +706,7 @@ function render() {
     if (S.tab === "auditors") renderAuditors();
     if (S.tab === "coverage") renderCoverage();
     if (S.tab === "settings") renderSettings();
+    if (S.tab === "users") renderUsers();
     if (S.openKey) renderDrawer();
   });
 }
@@ -1049,7 +1195,7 @@ function renderCoverage() {
 /* ---------- Settings ---------- */
 let settingsDirty = false;
 function renderSettings(fromCfg = false) {
-  if (!S.me.isOwner) { setTab("new"); return; }
+  if (!S.me.isOwner) return;
   $("#pool-status").innerHTML = S.pool.length ? `Current pool: <b>${fmtN(S.pool.length)}</b> leads · lead data as of ${esc(S.built)}` : "No lead pool loaded yet.";
   if (settingsDirty && fromCfg) return;
   if ($("#set-sections").dataset.filled && !fromCfg) return;
@@ -1300,7 +1446,7 @@ const DEFAULT_SERVICES = ["Private Club Membership", "Golf", "Global Airport Lou
 /* ---------- boot ---------- */
 (function boot() {
   let t = "new"; try { t = localStorage.getItem("dfca-tab") || "new"; } catch (e) {}
-  if (t === "settings") t = "new";
+  if (t === "settings" || t === "users") t = "new";
   setTab(t);
   if (location.protocol === "file:") {
     S.dbState = "off"; $("#chip-me").textContent = "Not connected";
