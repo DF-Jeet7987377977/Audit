@@ -1,0 +1,1321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DreamFolks Call Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap">
+<style>
+/* Layout: sticky brand header with tab bar, one centered work column; forms in two-column grids that stack on phones. */
+:root{
+  --bg:#f8f3ec; --card:#ffffff; --card2:#fbf1e4; --bdr:#e8d8c3; --bdr2:#d9c3a6;
+  --tx:#2b1b0c; --mu:#7d6450; --p:#F7941D; --p2:#FAAF65; --p-ink:#a85b05; --on-p:#2b1606;
+  --good:#0a8f72; --good-bg:#e3f5ef; --bad:#c43c3c; --bad-bg:#fbe8e6; --warn-bg:#fdf0dc;
+  --hdr:linear-gradient(135deg,#2d1a06,#4a2c0c 55%,#2d1a06); --hdr-tx:#fff6ea; --hdr-mu:#d8b88f;
+  --shadow:0 1px 2px rgba(60,35,10,.06),0 6px 18px rgba(60,35,10,.06); --focus:#a85b05;
+  --f-display:'Playfair Display',Georgia,'Times New Roman',serif;
+  --f-body:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0904; --card:#1c1208; --card2:#261808; --bdr:#3d2410; --bdr2:#5a361a;
+  --tx:#f5e0c8; --mu:#ad8d69; --p:#F7941D; --p2:#FAAF65; --p-ink:#FAAF65; --on-p:#1a0e03;
+  --good:#00d4aa; --good-bg:#0b2a22; --bad:#ff6b6b; --bad-bg:#3a1414; --warn-bg:#33210a;
+  --hdr:linear-gradient(135deg,#1c1208,#2d1a06,#1c1208); --hdr-tx:#ffffff; --hdr-mu:#ad8c66;
+  --shadow:none; --focus:#FAAF65; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d0904; --card:#1c1208; --card2:#261808; --bdr:#3d2410; --bdr2:#5a361a;
+  --tx:#f5e0c8; --mu:#ad8d69; --p:#F7941D; --p2:#FAAF65; --p-ink:#FAAF65; --on-p:#1a0e03;
+  --good:#00d4aa; --good-bg:#0b2a22; --bad:#ff6b6b; --bad-bg:#3a1414; --warn-bg:#33210a;
+  --hdr:linear-gradient(135deg,#1c1208,#2d1a06,#1c1208); --hdr-tx:#ffffff; --hdr-mu:#ad8c66;
+  --shadow:none; --focus:#FAAF65; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--tx);font-family:var(--f-body);font-size:14px;line-height:1.5}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;font-weight:700}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+.hdr{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--hdr);border-bottom:2px solid var(--p);color:var(--hdr-tx)}
+.hdr-in{max-width:1180px;margin:0 auto;padding:12px 16px 0;display:flex;flex-direction:column;gap:10px}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:22px;letter-spacing:.2px}
+.brand h1 span{color:var(--p)}
+.brand p{margin:2px 0 0;color:var(--hdr-mu);font-size:12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid rgba(250,175,101,.35);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--hdr-mu);white-space:nowrap}
+.chip b{color:var(--hdr-tx);font-weight:600}
+.chip.live{border-color:rgba(0,212,170,.5)} .chip.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#00d4aa;margin-right:6px;vertical-align:1px}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;color:var(--hdr-mu);padding:8px 14px 9px;cursor:pointer;white-space:nowrap;font-weight:600}
+.tabs button:hover{color:var(--hdr-tx)}
+.tabs button[aria-selected="true"]{color:var(--hdr-tx);border-bottom-color:var(--p)}
+.tabs button:focus-visible{outline:2px solid var(--p2);outline-offset:-3px}
+
+main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;min-width:0}
+.card h2{font-size:19px}
+.card .sub{color:var(--mu);font-size:13px;margin:4px 0 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.stack{display:flex;flex-direction:column;gap:12px}
+.banner{border-radius:8px;padding:10px 14px;font-size:13px;border:1px solid var(--bdr)}
+.banner.warn{background:var(--warn-bg);border-color:var(--p2)}
+.banner.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--tx)}
+.banner.good{background:var(--good-bg);border-color:var(--good)}
+.muted{color:var(--mu)}
+
+/* controls */
+.btn{border:1px solid var(--bdr2);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--p)}
+.btn.primary{background:var(--p);border-color:var(--p);color:var(--on-p)}
+.btn.primary:hover{background:var(--p2)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.small{padding:4px 10px;font-size:12.5px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+input[type=text],input[type=search],input[type=date],select,textarea{background:var(--card);border:1px solid var(--bdr2);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:70px}
+input:focus,select:focus,textarea:focus{border-color:var(--focus);outline:none;box-shadow:0 0 0 3px rgba(247,148,29,.25)}
+label.lbl{display:block;font-weight:600;font-size:13px;margin-bottom:5px}
+.lookup{display:grid;grid-template-columns:1fr auto;gap:10px;max-width:560px}
+
+/* lead card */
+.lead{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 18px;margin-top:14px;padding:14px;border-radius:8px;background:var(--card2);border:1px solid var(--bdr)}
+.kv{min-width:0}
+.kv dt{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu)}
+.kv dd{margin:1px 0 0;font-weight:600;overflow-wrap:anywhere}
+.pill{display:inline-block;border-radius:20px;padding:1px 9px;font-size:12px;font-weight:600;border:1px solid var(--bdr2);background:var(--card);white-space:nowrap}
+.pill.cat{border-color:var(--p);color:var(--p-ink)}
+.pill.dup{border-color:var(--bad);color:var(--bad)}
+.pill.edited{border-color:var(--mu);color:var(--mu)}
+
+/* form */
+.q{border-top:1px solid var(--bdr);padding-top:16px;display:grid;gap:8px}
+.q .qh{display:flex;gap:10px;align-items:baseline}
+.q .qn{font-family:var(--f-display);color:var(--p-ink);font-weight:700;min-width:26px}
+.q .qt{font-weight:600}
+.q.err .qt{color:var(--bad)}
+.q.err .qt::after{content:" (required)";font-weight:700}
+.q.err input,.q.err select,.q.err textarea,.q.err .seg{border-color:var(--bad)}
+.seg{position:relative;display:inline-flex;border:1px solid var(--bdr2);border-radius:8px;overflow:hidden;width:max-content}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{padding:6px 18px;cursor:pointer;font-weight:600;border-right:1px solid var(--bdr2)}
+.seg label:last-of-type{border-right:0}
+.seg input:checked+label{background:var(--p);color:var(--on-p)}
+.seg input:focus-visible+label{outline:2px solid var(--tx);outline-offset:-4px}
+.svc{display:flex;flex-wrap:wrap;gap:8px}
+.svc label{position:relative;border:1px solid var(--bdr2);border-radius:20px;padding:5px 12px;cursor:pointer;font-size:13px}
+.svc input{position:absolute;inset:0;opacity:0;margin:0;pointer-events:none}
+.svc label:has(input:checked){background:var(--p);border-color:var(--p);color:var(--on-p);font-weight:600}
+.svc label:has(input:focus-visible){outline:2px solid var(--tx);outline-offset:2px}
+.issue{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.issue .full{grid-column:1/-1}
+.indent{padding-left:36px}
+.formbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--bdr);padding-top:16px}
+
+/* tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--bdr);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bdr);vertical-align:top}
+th{background:var(--card2);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);white-space:nowrap;position:sticky;top:0}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--card2)}
+tbody tr.sel td{background:var(--warn-bg)}
+td.r,th.r{text-align:right}
+.clip{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.cov{display:grid;gap:4px}
+.bar{height:6px;border-radius:3px;background:var(--bdr);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--p)}
+.empty{padding:28px 16px;text-align:center;color:var(--mu)}
+.empty b{display:block;color:var(--tx);font-size:15px;margin-bottom:4px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,6,2,.45);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--card);border-left:2px solid var(--p);z-index:41;display:flex;flex-direction:column}
+.drawer-h{padding:calc(14px + env(safe-area-inset-top,0px)) 18px 12px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.drawer-b{padding:16px 18px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.ans dt{font-weight:600;font-size:13px}
+.ans dd{margin:2px 0 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.sec-t{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--p-ink);font-weight:700;margin-top:4px}
+.toast:empty{display:none}
+.toast{position:fixed;left:50%;width:max-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:60;font-weight:600;max-width:calc(100% - 32px)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+@media (max-width:640px){.issue{grid-template-columns:1fr}.indent{padding-left:0}.lookup{grid-template-columns:1fr}.hdr{position:relative;top:auto}.tabs{flex-wrap:wrap}}
+@media (prefers-reduced-motion:no-preference){.btn,.tabs button{transition:background .15s,border-color .15s,color .15s}}
+</style>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-in">
+    <div class="hdr-top">
+      <div class="brand">
+        <h1>DreamFolks <span>Call Audit</span></h1>
+        <p id="pool-line">Loading the audit pool…</p>
+      </div>
+      <div class="chips">
+        <span class="chip" id="chip-me">Signing in…</span>
+        <span class="chip num" id="chip-count"><b>0</b> audits</span>
+        <span class="chip" id="chip-status">Connecting…</span>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-new" data-tab="new" aria-selected="true">New Audit</button>
+      <button role="tab" id="tab-all" data-tab="all" aria-selected="false">All Audits</button>
+      <button role="tab" id="tab-auditors" data-tab="auditors" aria-selected="false">Auditors</button>
+      <button role="tab" id="tab-coverage" data-tab="coverage" aria-selected="false">Coverage</button>
+      <button role="tab" id="tab-settings" data-tab="settings" aria-selected="false" hidden>Settings</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="global-banner" class="banner bad" hidden></div>
+
+  <!-- NEW AUDIT -->
+  <section id="view-new" class="stack">
+    <div class="card">
+      <h2 id="new-title">Audit a lead</h2>
+      <p class="sub" id="new-sub">Enter the customer's phone number or Lead ID. Lead details fill in from the audit pool. One audit per lead covers all calls made to that number.</p>
+      <form id="lookup-form" class="lookup" style="margin-top:14px" autocomplete="off">
+        <input type="search" id="lookup-q" placeholder="Phone number or Lead ID, e.g. 98xxxxxxxx" aria-label="Phone number or Lead ID">
+        <button class="btn primary" type="submit" id="lookup-btn">Find lead</button>
+      </form>
+      <div id="lookup-msg" class="banner warn" style="margin-top:12px" aria-live="polite" hidden></div>
+      <div id="lead-card"></div>
+    </div>
+    <div class="card" id="form-card" hidden>
+      <form id="audit-form" class="stack" novalidate></form>
+    </div>
+  </section>
+
+  <!-- ALL AUDITS -->
+  <section id="view-all" class="stack" hidden>
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between">
+        <div><h2>All audits</h2><p class="sub">Every audit by every auditor, newest first. Refreshes every minute.</p></div>
+        <div class="row"><button class="btn" id="btn-refresh">Refresh</button><button class="btn" id="btn-export" hidden>Download raw data (.xlsx)</button></div>
+      </div>
+      <div id="dup-banner" class="banner bad" hidden></div>
+      <div class="filters">
+        <div><label class="lbl" for="f-q">Search</label><input type="search" id="f-q" placeholder="Phone, Lead ID, text…"></div>
+        <div><label class="lbl" for="f-auditor">Auditor</label><select id="f-auditor"></select></div>
+        <div><label class="lbl" for="f-agent">Agent</label><select id="f-agent"></select></div>
+        <div><label class="lbl" for="f-cat">Lead category</label><select id="f-cat"></select></div>
+        <div><label class="lbl" for="f-band">Talk-time band</label><select id="f-band"></select></div>
+        <div><label class="lbl" for="f-src">Source</label><select id="f-src"></select></div>
+        <div><label class="lbl" for="f-from">From</label><input type="date" id="f-from"></div>
+        <div><label class="lbl" for="f-to">To</label><input type="date" id="f-to"></div>
+      </div>
+      <p class="muted num" id="all-count" style="margin:0"></p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Submitted</th><th>Auditor</th><th>Phone</th><th>Agent</th><th>Category</th><th>Band</th><th>Source</th><th>Interested?</th><th>Why no sale</th></tr></thead>
+        <tbody id="all-body"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- AUDITORS -->
+  <section id="view-auditors" class="stack" hidden>
+    <div class="card stack">
+      <div><h2>Auditor-wise leads audited</h2><p class="sub">Select an auditor to see the leads they audited. Weeks start on Monday.</p></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Auditor</th><th class="r">Today</th><th class="r">This week</th><th class="r">This month</th><th class="r">Total</th><th>Last audit</th></tr></thead>
+        <tbody id="aud-body"></tbody>
+      </table></div>
+    </div>
+    <div class="card stack" id="aud-detail" hidden></div>
+  </section>
+
+  <!-- COVERAGE -->
+  <section id="view-coverage" class="stack" hidden>
+    <div class="card stack">
+      <div><h2>Audit coverage</h2><p class="sub" id="cov-sub">Leads audited out of the audit pool, by lead category and talk-time band.</p></div>
+      <div class="tbl-wrap"><table id="cov-table"></table></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="view-settings" class="stack" hidden>
+    <div class="card stack">
+      <div><h2>SharePoint setup</h2><p class="sub" id="setup-sub">Checking the SharePoint site…</p></div>
+      <div class="row"><button class="btn primary" id="btn-setup" hidden>Create the SharePoint lists</button><span class="muted" id="setup-msg" role="status"></span></div>
+    </div>
+    <div class="card stack">
+      <div><h2>Lead pool</h2><p class="sub">The leads auditors can look up. Upload the masked <b>leads.json</b> made by the build script (it holds no readable phone numbers or Lead IDs). It is saved to the SharePoint site's Documents library and replaces the current pool for everyone. Saved audits are not changed.</p></div>
+      <p class="num" id="pool-status" style="margin:0"></p>
+      <div class="row"><label class="btn primary" for="pool-file" style="display:inline-block">Upload leads.json</label>
+        <input type="file" id="pool-file" accept=".json,application/json" hidden>
+        <span class="muted" id="pool-msg" role="status"></span></div>
+    </div>
+    <div class="card stack">
+      <div><h2>Questionnaire lists</h2><p class="sub">Only owners see this tab. One option per line, written as <b>Level 1 &gt; Level 2</b>. Changes apply to new audits. Saved audits keep the text they were submitted with.</p></div>
+      <div id="set-sections" class="grid2"></div>
+      <div><label class="lbl" for="set-services">Q4 services (one per line)</label><textarea id="set-services" rows="8"></textarea></div>
+      <div class="row"><button class="btn primary" id="set-save">Save lists</button><span class="muted" id="set-msg"></span></div>
+    </div>
+  </section>
+</main>
+
+<div id="drawer-root"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const FORM_VERSION = 1;
+const BAND_ORDER = ["Up to 1 min", "1-5 min", "Over 5 min"];
+const NO_ISSUE = "No issue found";
+
+const S = {
+  sp: null,                // { siteId, audits, settings } once connected
+  me: { id: null, isOwner: false, name: "", email: "" },
+  settingsItems: {},       // key -> SharePoint item id in the settings list
+  pool: [], byHash: new Map(), byLidHash: new Map(), mask: null, dicts: null, built: "",
+  cfg: { taxonomy: undefined, services: undefined },
+  audits: new Map(),       // SharePoint item id -> {key, uid, phone, d}
+  auditors: new Set(),
+  names: {},
+  tab: "new", lead: null, editing: null, selAuditor: null, openKey: null,
+  dbState: "connecting",
+};
+
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtN = n => Number(n || 0).toLocaleString("en-IN");
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtIso(s) { if (!s) return "—"; const [y, m, d] = s.split("-"); return `${d} ${MON[+m - 1]} ${y}`; }
+function fmtTs(ts, withTime = true) {
+  if (!ts) return "—"; const d = new Date(ts);
+  const base = `${String(d.getDate()).padStart(2, "0")} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+  return withTime ? `${base}, ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : base;
+}
+function phone10(v) { const d = String(v || "").replace(/\D/g, ""); return d.length >= 10 ? d.slice(-10) : null; }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; clearTimeout(toast._t); toast._t = setTimeout(() => t.textContent = "", 3200); }
+function nameOf(uid) { const n = S.names[uid]?.name; return n || (uid === S.me.id ? "You" : "Auditor"); }
+function bandRank(b) { const i = BAND_ORDER.indexOf(b); return i < 0 ? 99 : i; }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+function setTab(t) {
+  S.tab = t;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+  for (const v of ["new", "all", "auditors", "coverage", "settings"]) $("#view-" + v).hidden = v !== t;
+  try { localStorage.setItem("dfca-tab", t); } catch (e) {}
+  render();
+}
+
+/* ---------- leads ---------- */
+/* The lead pool is leads.json in the SharePoint site's Documents library, uploaded by an owner. */
+function setPool(meta, rows) {
+  const F = meta.fields, D = meta.dicts;
+  S.pool = []; S.byHash = new Map(); S.byLidHash = new Map();
+  S.dicts = D; S.built = meta.built; S.mask = meta.mask;
+  for (const row of rows) {
+    const L = {};
+    for (let i = 0; i < F.length; i++) L[F[i]] = D[F[i]] ? D[F[i]][row[i]] : row[i];
+    S.pool.push(L);
+    S.byHash.set(L.ph, L);
+    if (L.lh) S.byLidHash.set(L.lh, L);
+  }
+  $("#pool-line").textContent = `${fmtN(S.pool.length)} leads in the audit pool · lead data as of ${S.built}`;
+}
+async function loadPool() {
+  let item;
+  try { item = await gx(`/sites/${S.sp.siteId}/drive/root:/${encodeURIComponent(CFG.poolFolder)}/leads.json`); }
+  catch (e) { if (e.status !== 404) throw e; item = null; }
+  if (!item) {
+    S.poolState = "empty";
+    $("#pool-line").textContent = S.me.isOwner ? "No lead pool yet. Upload leads.json in Settings." : "The lead pool hasn't been loaded yet. An owner adds it in Settings.";
+    render(); return;
+  }
+  if (item.eTag && item.eTag === S.poolTag) return;
+  S.poolState = "loading";
+  const res = await fetch(item["@microsoft.graph.downloadUrl"]);
+  if (!res.ok) throw new Error("leads.json download " + res.status);
+  const j = await res.json();
+  setPool(j, j.rows);
+  S.poolTag = item.eTag; S.poolState = "ready"; render();
+}
+/* The lead pool holds no phone numbers or Lead IDs in readable form.
+   ph/lh are PBKDF2 hashes; le is the Lead ID XORed with a PBKDF2 key derived from the phone. */
+const te = new TextEncoder();
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+async function maskKey(v) {
+  const k = await crypto.subtle.importKey("raw", te.encode(v), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: te.encode(S.mask.salt), iterations: S.mask.iter }, k, S.mask.bytes * 8);
+  return hex(bits);
+}
+async function unsealLid(le, phone) {
+  if (!le) return "";
+  const ct = le.match(/../g).map(h => parseInt(h, 16));
+  const k = await crypto.subtle.importKey("raw", te.encode(phone), "PBKDF2", false, ["deriveBits"]);
+  const key = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: te.encode(S.mask.salt + ":lid"), iterations: S.mask.iter }, k, ct.length * 8));
+  return new TextDecoder().decode(new Uint8Array(ct.map((b, i) => b ^ key[i])));
+}
+async function openLead(L, phone, typedLid) {
+  S.lead = { ...L, p: phone, lid: typedLid || await unsealLid(L.le, phone) };
+  renderLookupState(true);
+}
+function leadSnapshot(L) {
+  return {
+    phone: L.p, leadId: L.lid || "", agent: L.agent, leadCreated: L.created, category: L.cat,
+    r1: L.r1, r2: L.r2, talkTimeMin: L.tt, talkBand: L.band, totalDials: L.dials, everConnected: L.conn ? "Yes" : "No",
+    source: L.src, city: L.city, campaign: L.camp, adset: L.adset, ad: L.ad,
+    totalCalls: L.calls, connectedCalls: L.ccalls, firstCall: L.first, lastCall: L.last,
+  };
+}
+
+/* ---------- Microsoft 365: sign-in and Graph ---------- */
+const CFG = window.AUDIT_CONFIG || {};
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const SCOPES = ["User.Read", "Sites.ReadWrite.All"];
+let msalApp = null;
+async function signIn() {
+  msalApp = new msal.PublicClientApplication({
+    auth: { clientId: CFG.clientId, authority: `https://login.microsoftonline.com/${CFG.tenantId}`, redirectUri: location.origin + location.pathname },
+    cache: { cacheLocation: "localStorage" },
+  });
+  if (msalApp.initialize) await msalApp.initialize();
+  const res = await msalApp.handleRedirectPromise();
+  const account = res?.account || msalApp.getAllAccounts()[0];
+  if (!account) { $("#chip-me").textContent = "Signing in…"; await msalApp.loginRedirect({ scopes: SCOPES }); return null; }
+  msalApp.setActiveAccount(account);
+  return account;
+}
+async function token() {
+  try {
+    return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account: msalApp.getActiveAccount() })).accessToken;
+  } catch (e) {
+    if (e instanceof msal.InteractionRequiredAuthError) await msalApp.acquireTokenRedirect({ scopes: SCOPES });
+    throw e;
+  }
+}
+/* One Graph call. Retries once on throttling; errors carry .status and .code. */
+async function gx(path, opts = {}, retried = false) {
+  const url = path.startsWith("http") ? path : GRAPH + path;
+  const headers = { Authorization: "Bearer " + await token(), ...(opts.headers || {}) };
+  if (typeof opts.body === "string") headers["Content-Type"] = "application/json";
+  const res = await fetch(url, { ...opts, headers });
+  if ((res.status === 429 || res.status === 503) && !retried) {
+    await new Promise(r => setTimeout(r, 1000 * (+res.headers.get("Retry-After") || 3)));
+    return gx(path, opts, true);
+  }
+  if (res.status === 204) return null;
+  const isJson = (res.headers.get("content-type") || "").includes("json");
+  const body = isJson ? await res.json() : await res.text();
+  if (!res.ok) {
+    const err = new Error(body?.error?.message || `${res.status} ${res.statusText}`);
+    err.status = res.status; err.code = body?.error?.code || "";
+    throw err;
+  }
+  return body;
+}
+async function listAll(path) {
+  const out = [];
+  let url = path;
+  while (url) { const r = await gx(url); out.push(...r.value); url = r["@odata.nextLink"]; }
+  return out;
+}
+
+/* ---------- SharePoint lists ---------- */
+const AUDIT_COLUMNS = [
+  { name: "Phone", text: {}, indexed: true, enforceUniqueValues: true },
+  { name: "LeadId", text: {} }, { name: "Agent", text: {} }, { name: "AgentHeard", text: {} },
+  { name: "Category", text: {} }, { name: "TalkBand", text: {} }, { name: "Source", text: {} },
+  { name: "City", text: {} }, { name: "Campaign", text: {} }, { name: "Interested", text: {} },
+  { name: "WhyNoSale", text: { allowMultipleLines: true } },
+  { name: "SubmittedAt", dateTime: {} },
+  { name: "RecordJson", text: { allowMultipleLines: true } },
+];
+async function findLists() {
+  const lists = await listAll(`/sites/${S.sp.siteId}/lists?$select=id,displayName&$top=200`);
+  S.sp.audits = lists.find(l => l.displayName === CFG.auditsList)?.id || null;
+  S.sp.settings = lists.find(l => l.displayName === CFG.settingsList)?.id || null;
+}
+async function createLists() {
+  const base = `/sites/${S.sp.siteId}/lists`;
+  if (!S.sp.audits) {
+    const l = await gx(base, { method: "POST", body: JSON.stringify({ displayName: CFG.auditsList, list: { template: "genericList" }, columns: AUDIT_COLUMNS }) });
+    S.sp.audits = l.id;
+  }
+  if (!S.sp.settings) {
+    const l = await gx(base, { method: "POST", body: JSON.stringify({ displayName: CFG.settingsList, list: { template: "genericList" }, columns: [{ name: "Value", text: { allowMultipleLines: true } }] }) });
+    S.sp.settings = l.id;
+  }
+  if (!S.cfg.taxonomy) await saveSetting("taxonomy", { sections: DEFAULT_TAXONOMY });
+  if (!S.cfg.services) await saveSetting("services", { services: DEFAULT_SERVICES });
+}
+
+/* Settings list: one item per key (Title), JSON in Value. */
+async function loadSettings() {
+  const items = await listAll(`/sites/${S.sp.siteId}/lists/${S.sp.settings}/items?$expand=fields($select=Title,Value)&$top=200`);
+  const got = {};
+  for (const it of items) { S.settingsItems[it.fields.Title] = it.id; try { got[it.fields.Title] = JSON.parse(it.fields.Value); } catch (e) {} }
+  S.cfg.taxonomy = got.taxonomy || null;
+  S.cfg.services = got.services || null;
+  onCfg();
+}
+async function saveSetting(key, value) {
+  const body = { ...value, updatedAt: new Date().toISOString() };
+  const base = `/sites/${S.sp.siteId}/lists/${S.sp.settings}/items`;
+  if (S.settingsItems[key]) await gx(`${base}/${S.settingsItems[key]}/fields`, { method: "PATCH", body: JSON.stringify({ Value: JSON.stringify(body) }) });
+  else S.settingsItems[key] = (await gx(base, { method: "POST", body: JSON.stringify({ fields: { Title: key, Value: JSON.stringify(body) } }) })).id;
+  S.cfg[key] = body;
+}
+
+/* Audits list: one item per lead. Phone is a unique column, so SharePoint itself refuses a second audit. */
+function auditFields(rec) {
+  const L = rec.lead || {}, A = rec.answers || {};
+  return {
+    Title: rec.phone, Phone: rec.phone, LeadId: L.leadId || "", Agent: L.agent || "", AgentHeard: rec.agentAudited || "",
+    Category: L.category || "", TalkBand: L.talkBand || "", Source: L.source || "", City: L.city || "", Campaign: L.campaign || "",
+    Interested: A.q1 || "", WhyNoSale: A.q12 || "", SubmittedAt: rec.submittedAt, RecordJson: JSON.stringify(rec),
+  };
+}
+async function loadAudits() {
+  const items = await listAll(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items?$expand=fields($select=Phone,RecordJson)&$select=id,createdBy&$top=999`);
+  const audits = new Map(), names = {};
+  for (const it of items) {
+    let d; try { d = JSON.parse(it.fields.RecordJson || "{}"); } catch (e) { continue; }
+    const who = it.createdBy?.user || {};
+    const uid = who.id || who.email || d.auditorId || "unknown";
+    if (who.displayName) names[uid] = { name: who.displayName };
+    audits.set(it.id, { key: it.id, uid, phone: it.fields.Phone || d.phone, d });
+  }
+  S.audits = audits; S.names = names; S.auditors = new Set([...audits.values()].map(a => a.uid));
+  S.dbState = "live"; render();
+}
+
+async function connect() {
+  const me = await gx("/me?$select=id,displayName,mail,userPrincipalName");
+  const email = (me.mail || me.userPrincipalName || "").toLowerCase();
+  S.me = { id: me.id, name: me.displayName, email, isOwner: (CFG.owners || []).map(o => o.toLowerCase()).includes(email) };
+  $("#chip-me").innerHTML = `<b>${esc(me.displayName || "You")}</b>${S.me.isOwner ? " · owner" : ""}`;
+  $("#tab-settings").hidden = !S.me.isOwner;
+  $("#btn-export").hidden = !S.me.isOwner;
+  const site = await gx(`/sites/${CFG.siteHost}:${CFG.sitePath}`);
+  S.sp = { siteId: site.id, audits: null, settings: null };
+  await findLists();
+  renderSetup();
+  if (!S.sp.audits || !S.sp.settings) {
+    S.dbState = "off";
+    showGlobal(S.me.isOwner ? "The SharePoint lists don't exist yet. Open Settings and choose Create the SharePoint lists." : "The Call Audit tool isn't set up yet. Ask an owner to finish the SharePoint setup.");
+    render(); return;
+  }
+  await Promise.all([loadSettings(), loadAudits(), loadPool().catch(e => showGlobal("The lead pool didn't load: " + e.message))]);
+  setInterval(() => { if (!document.hidden) loadAudits().catch(dbErr); }, 60000);
+}
+function dbErr(e) {
+  S.dbState = "error";
+  showGlobal(e?.status === 403 ? "SharePoint refused access. Ask an owner to check your permissions on the Call Audit site." : "SharePoint stopped responding. Reload the page to reconnect.");
+  render();
+}
+function showGlobal(msg) { const b = $("#global-banner"); b.textContent = msg; b.hidden = false; }
+function renderSetup() {
+  if (!S.me.isOwner) return;
+  const ready = S.sp?.audits && S.sp?.settings;
+  $("#setup-sub").textContent = ready
+    ? `Connected to ${CFG.siteHost}${CFG.sitePath}: "${CFG.auditsList}" and "${CFG.settingsList}" lists are in place.`
+    : `The site ${CFG.siteHost}${CFG.sitePath} has no "${CFG.auditsList}" / "${CFG.settingsList}" lists yet. Create them here, then set auditor permissions as described in IT-SETUP.md.`;
+  $("#btn-setup").hidden = !!ready;
+}
+$("#btn-setup").addEventListener("click", async () => {
+  const btn = $("#btn-setup"), msg = $("#setup-msg"); btn.disabled = true; msg.textContent = "Creating lists…";
+  try {
+    await createLists();
+    msg.textContent = "Lists created."; $("#global-banner").hidden = true;
+    renderSetup();
+    await Promise.all([loadSettings(), loadAudits(), loadPool()]);
+  } catch (e) { msg.textContent = "Couldn't create the lists: " + e.message; }
+  finally { btn.disabled = false; }
+});
+
+/* ---------- derived ---------- */
+function auditList() { return [...S.audits.values()].sort((a, b) => (b.d.ts || 0) - (a.d.ts || 0)); }
+function auditsByPhone() {
+  const m = new Map();
+  for (const a of S.audits.values()) { if (!m.has(a.phone)) m.set(a.phone, []); m.get(a.phone).push(a); }
+  return m;
+}
+
+/* ---------- render ---------- */
+let renderQueued = false;
+function render() {
+  if (renderQueued) return; renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    renderHeader();
+    if (S.tab === "new") renderLookupState();
+    if (S.tab === "all") renderAll();
+    if (S.tab === "auditors") renderAuditors();
+    if (S.tab === "coverage") renderCoverage();
+    if (S.tab === "settings") renderSettings();
+    if (S.openKey) renderDrawer();
+  });
+}
+function renderHeader() {
+  const nAud = new Set([...S.audits.values()].map(a => a.uid)).size;
+  $("#chip-count").innerHTML = `<b>${fmtN(S.audits.size)}</b> audits · <b>${fmtN(nAud)}</b> auditor${nAud === 1 ? "" : "s"}`;
+  const st = $("#chip-status");
+  st.className = "chip" + (S.dbState === "live" ? " live" : "");
+  st.textContent = { connecting: "Connecting…", live: "Live", off: "Offline", error: "Disconnected" }[S.dbState];
+}
+
+/* ---------- New Audit: lookup ---------- */
+$("#lookup-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const btn = $("#lookup-btn"); btn.disabled = true;
+  doLookup($("#lookup-q").value).catch(() => { const m = $("#lookup-msg"); m.textContent = "The lookup failed. Try again."; m.hidden = false; }).finally(() => btn.disabled = false);
+});
+async function doLookup(q) {
+  q = String(q || "").trim();
+  const msg = $("#lookup-msg"); msg.hidden = true;
+  if (S.editing) cancelEdit(false);
+  if (!q) { msg.textContent = "Type a 10-digit phone number or a Lead ID."; msg.hidden = false; return; }
+  if (!S.pool.length || !S.mask) {
+    msg.textContent = S.poolState === "empty" ? "The lead pool hasn't been loaded yet. An owner adds it in Settings." : "The audit pool is still loading. Try again in a moment.";
+    msg.hidden = false; return;
+  }
+  const digits = q.replace(/\D/g, "");
+  // Lead IDs are 15+ characters (mostly digits, a few alphanumeric); phone numbers are 10 (or 12 with the 91 prefix).
+  // The source sheets hold some Lead IDs as "l:<digits>", and Excel cut 16-17 digit IDs to 15 significant digits.
+  if (q.length >= 14) {
+    const c = new Set([q, q.toLowerCase(), digits]);
+    if (digits.length >= 14) c.add("l:" + digits);
+    if (digits.length > 15) c.add(digits.slice(0, 15).padEnd(digits.length, "0"));
+    for (const cand of [...c].filter(x => x.length >= 14)) {
+      const byLid = S.byLidHash.get(await maskKey(cand));
+      if (byLid) { askPhoneFor(byLid, q); return; }
+    }
+  }
+  const p = phone10(q);
+  const L = p ? S.byHash.get(await maskKey(p)) : null;
+  if (!L) {
+    S.lead = null; $("#lead-card").innerHTML = ""; $("#form-card").hidden = true;
+    msg.textContent = `No lead matches "${q}" in the audit pool. The pool holds Non-Workable, DNC and Rejected leads that connected at least once.`;
+    msg.hidden = false; return;
+  }
+  await openLead(L, p);
+}
+/* Found by Lead ID: the phone is needed to open the lead, because audits are keyed by phone number. */
+function askPhoneFor(L, lid) {
+  S.lead = null; $("#lead-card").innerHTML = ""; $("#form-card").hidden = true;
+  const msg = $("#lookup-msg");
+  msg.innerHTML = `<form id="lid-phone" class="stack" style="gap:8px" autocomplete="off">
+    <span>Lead <b class="num">${esc(lid)}</b> is in the audit pool. Enter the customer's phone number to open it.</span>
+    <div class="lookup"><input type="search" id="lid-phone-q" placeholder="10-digit phone number" aria-label="Customer phone number"><button class="btn primary" type="submit">Open lead</button></div>
+    <span id="lid-phone-err" class="muted"></span></form>`;
+  msg.hidden = false;
+  $("#lid-phone-q").focus();
+  $("#lid-phone").addEventListener("submit", async e => {
+    e.preventDefault();
+    const p = phone10($("#lid-phone-q").value);
+    if (p && await maskKey(p) === L.ph) { msg.hidden = true; await openLead(L, p, lid); }
+    else $("#lid-phone-err").textContent = "That number doesn't belong to this lead. Check it and try again.";
+  });
+}
+function leadCardHtml(L) {
+  const kv = (k, v) => `<div class="kv"><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
+  return `<dl class="lead">
+    ${kv("Phone", `<span class="num">${esc(L.phone)}</span>`)}
+    ${kv("Lead ID", `<span class="num">${esc(L.leadId || "—")}</span>`)}
+    ${kv("Agent on lead", esc(L.agent))}
+    ${kv("Lead category", `<span class="pill cat">${esc(L.category)}</span>`)}
+    ${kv("Talk time", `<span class="num">${esc(L.talkTimeMin)} min</span> · ${esc(L.talkBand)}`)}
+    ${kv("Calls", `<span class="num">${fmtN(L.totalCalls)} made · ${fmtN(L.connectedCalls)} connected</span>`)}
+    ${kv("First / last call", `<span class="num">${fmtIso(L.firstCall)} → ${fmtIso(L.lastCall)}</span>`)}
+    ${kv("Final disposition", `${esc(L.r1 || "—")}<br><span class="muted">${esc(L.r2 || "")}</span>`)}
+    ${kv("Lead created", `<span class="num">${fmtIso(L.leadCreated)}</span>`)}
+    ${kv("Source", esc(L.source || "—"))}
+    ${kv("City (CRM)", esc(L.city || "—"))}
+    ${kv("Campaign", esc(L.campaign || "—"))}
+    ${kv("Ad set", esc(L.adset || "—"))}
+    ${kv("Ad", esc(L.ad || "—"))}
+  </dl>`;
+}
+function renderLookupState(fresh = false) {
+  const card = $("#lead-card"), formCard = $("#form-card");
+  if (S.editing) return; // edit mode renders its own form
+  $("#new-title").textContent = "Audit a lead";
+  const L = S.lead;
+  if (!L) { card.innerHTML = emptyNewHtml(); formCard.hidden = true; return; }
+  const snap = leadSnapshot(L);
+  const existing = auditsByPhone().get(L.p);
+  let html = leadCardHtml(snap);
+  if (existing && existing.length) {
+    const a = existing[0];
+    html += `<div class="banner warn" style="margin-top:12px">Already audited by <b>${esc(nameOf(a.uid))}</b> on ${esc(fmtTs(a.d.ts))}. Each lead gets one audit.
+      <button class="btn small" style="margin-left:8px" data-open="${esc(a.key)}">View audit</button></div>`;
+    card.innerHTML = html; formCard.hidden = true; return;
+  }
+  card.innerHTML = html;
+  if (!S.sp?.audits || !S.me.id) {
+    card.insertAdjacentHTML("beforeend", `<div class="banner bad" style="margin-top:12px">You can look leads up, but saving audits needs you signed in with access to the Call Audit SharePoint site.</div>`);
+    formCard.hidden = true; return;
+  }
+  if (fresh || formCard.hidden || $("#audit-form").dataset.phone !== L.p) buildForm(null, L.p);
+  formCard.hidden = false;
+}
+function emptyNewHtml() {
+  const mine = auditList().filter(a => a.uid === S.me.id).slice(0, 5);
+  if (!mine.length) return `<div class="empty" style="margin-top:12px"><b>No lead selected</b>Find a lead above to start its audit. Your recent audits will show here.</div>`;
+  return `<div style="margin-top:16px"><p class="sec-t">Your latest audits</p><div class="tbl-wrap"><table><tbody>
+    ${mine.map(a => `<tr class="click" tabindex="0" data-open="${esc(a.key)}"><td class="num">${esc(a.phone)}</td><td>${esc(a.d.lead?.category || "")}</td><td class="num muted">${esc(fmtTs(a.d.ts))}</td></tr>`).join("")}
+  </tbody></table></div></div>`;
+}
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-open]"); if (o) { openDrawer(o.dataset.open); return; }
+});
+
+/* ---------- questionnaire ---------- */
+function cfgReady() { return S.cfg.taxonomy && S.cfg.services && Array.isArray(S.cfg.taxonomy.sections); }
+function onCfg() {
+  if (S.tab === "settings") renderSettings(true);
+  const f = $("#audit-form");
+  if (!$("#form-card").hidden && !f.dataset.built && (S.lead || S.editing)) buildForm(S.editing ? S.audits.get(S.editing)?.d : null, f.dataset.phone);
+}
+function ynHtml(id, val) {
+  return `<div class="seg" role="radiogroup" aria-label="Yes or No" id="${id}">
+    <input type="radio" name="${id}" id="${id}-y" value="Yes" ${val === "Yes" ? "checked" : ""}><label for="${id}-y">Yes</label>
+    <input type="radio" name="${id}" id="${id}-n" value="No" ${val === "No" ? "checked" : ""}><label for="${id}-n">No</label></div>`;
+}
+function qHtml(n, key, title, body) { return `<div class="q" role="group" aria-labelledby="qt-${key}" data-q="${key}"><div class="qh"><span class="qn">${n}</span><span class="qt" id="qt-${key}">${title}</span></div><div class="stack indent" style="gap:8px">${body}</div></div>`; }
+
+function buildForm(rec, phone) {
+  const f = $("#audit-form");
+  f.dataset.phone = phone || ""; delete f.dataset.built;
+  if (!cfgReady()) {
+    f.innerHTML = `<div class="empty"><b>The questionnaire isn't set up yet</b>${S.cfg.taxonomy === undefined ? "Loading the questionnaire…" : "The owner adds the dropdown lists in Settings."}</div>`;
+    return;
+  }
+  f.dataset.built = "1";
+  const A = rec?.answers || {};
+  const L = rec?.lead || (S.lead ? leadSnapshot(S.lead) : {});
+  const svcs = S.cfg.services.services || [];
+  const agents = [...new Set([...(S.dicts?.agent || []), A.agentAudited, rec?.agentAudited].filter(a => a && a !== "System"))].sort();
+  const agentPick = L.agent === "System" ? qHtml("—", "agentAudited", "Agent heard on the calls <span class='muted'>(lead shows System)</span>",
+    `<select id="f-agentAudited" aria-labelledby="qt-agentAudited"><option value="">Choose the agent…</option>${agents.map(a => `<option ${A.agentAudited === a || rec?.agentAudited === a ? "selected" : ""}>${esc(a)}</option>`).join("")}</select>`) : "";
+  const issues = S.cfg.taxonomy.sections.map((sec, i) => {
+    const cur = A.issues?.[sec.key] || {};
+    const l1s = sec.options.map(o => o.l1);
+    return qHtml(7 + i, "issue-" + sec.key, esc(sec.label) + " <span class='muted'>(if any)</span>", `
+      <div class="issue" data-sec="${esc(sec.key)}">
+        <div><label class="lbl" for="f-${sec.key}-l1">Level 1</label>
+          <select id="f-${sec.key}-l1" data-l1="${esc(sec.key)}"><option value="">Choose…</option><option ${cur.l1 === NO_ISSUE ? "selected" : ""}>${NO_ISSUE}</option>
+          ${l1s.map(l => `<option ${cur.l1 === l ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
+        <div data-l2wrap><label class="lbl" for="f-${sec.key}-l2">Level 2</label><select id="f-${sec.key}-l2"></select></div>
+        <div class="full" data-cwrap><label class="lbl" for="f-${sec.key}-c">Comment</label><textarea id="f-${sec.key}-c" rows="2" placeholder="What you heard on the calls">${esc(cur.comment || "")}</textarea></div>
+      </div>`);
+  }).join("");
+  const nIssues = S.cfg.taxonomy.sections.length;
+  f.innerHTML = `
+    ${rec ? `<div class="banner warn">Editing the audit by <b>${esc(nameOf(S.audits.get(S.editing)?.uid))}</b> for <b class="num">${esc(L.phone)}</b>. Lead details stay as they were when it was submitted.</div>` : ""}
+    <div><h2>Questionnaire</h2><p class="sub">Every question is required. In the issue sections, choose <b>${NO_ISSUE}</b> when nothing applies.</p></div>
+    ${agentPick}
+    ${qHtml("—", "synopsis", "Call synopsis: what happened across all calls on this lead", `<textarea id="f-synopsis" aria-labelledby="qt-synopsis" rows="4" placeholder="Summarise the conversations: what the customer asked, what the agent said, how it ended">${esc(A.synopsis || "")}</textarea>`)}
+    ${qHtml(1, "q1", "Was the customer interested initially?", ynHtml("f-q1", A.q1) + `<div data-why="q1"><label class="lbl" for="f-q1why">If No, why?</label><textarea id="f-q1why" rows="2">${esc(A.q1Why || "")}</textarea></div>`)}
+    ${qHtml(2, "q2", "Did the customer have understanding of DF Club Membership?", ynHtml("f-q2", A.q2))}
+    ${qHtml(3, "q3", "Was the complete product pitched to the customer?", ynHtml("f-q3", A.q3) + `<div data-why="q3"><label class="lbl" for="f-q3why">If No, why?</label><textarea id="f-q3why" rows="2">${esc(A.q3Why || "")}</textarea></div>`)}
+    ${qHtml(4, "q4", "Which service did the customer have most interest in?", `<div class="svc" id="f-q4">${svcs.map((s, i) => `<label><input type="checkbox" id="f-q4-${i}" value="${esc(s)}" ${(A.q4 || []).includes(s) ? "checked" : ""}>${esc(s)}</label>`).join("")}</div>`)}
+    ${qHtml(5, "q5", "If the above service(s) were sold independently, would the customer buy?", ynHtml("f-q5", A.q5))}
+    ${qHtml(6, "q6", "Target City", `<input type="text" id="f-q6" aria-labelledby="qt-q6" placeholder="City the customer mentioned" value="${esc(A.q6 || "")}">`)}
+    ${issues}
+    ${qHtml(7 + nIssues, "q12", "Why did the customer not buy the product?", `<textarea id="f-q12" aria-labelledby="qt-q12" rows="3">${esc(A.q12 || "")}</textarea>`)}
+    <div class="formbar">
+      <button class="btn primary" type="submit" id="f-submit">${rec ? "Save changes" : "Submit audit"}</button>
+      ${rec ? `<button class="btn" type="button" id="f-cancel">Cancel</button>` : ""}
+      <span class="muted" id="f-msg" role="status"></span>
+    </div>`;
+  for (const sec of S.cfg.taxonomy.sections) fillL2(sec.key, A.issues?.[sec.key]?.l2);
+  syncWhy();
+  if (rec) $("#f-cancel").addEventListener("click", () => cancelEdit(true));
+}
+function fillL2(key, val) {
+  const sec = S.cfg.taxonomy.sections.find(s => s.key === key);
+  const l1 = $(`#f-${key}-l1`).value;
+  const wrap = $(`#f-${key}-l1`).closest(".issue");
+  const none = l1 === NO_ISSUE || !l1;
+  wrap.querySelector("[data-l2wrap]").hidden = l1 === NO_ISSUE;
+  wrap.querySelector("[data-cwrap]").hidden = l1 === NO_ISSUE;
+  const opts = none ? [] : (sec.options.find(o => o.l1 === l1)?.l2 || []);
+  $(`#f-${key}-l2`).innerHTML = `<option value="">${l1 ? "Choose…" : "Choose Level 1 first"}</option>` + opts.map(o => `<option ${val === o ? "selected" : ""}>${esc(o)}</option>`).join("");
+}
+function radio(id) { return document.querySelector(`input[name="${id}"]:checked`)?.value || ""; }
+function syncWhy() {
+  for (const k of ["q1", "q3"]) { const w = document.querySelector(`[data-why="${k}"]`); if (w) w.hidden = radio("f-" + k) !== "No"; }
+}
+$("#audit-form").addEventListener("change", e => {
+  if (e.target.dataset.l1) fillL2(e.target.dataset.l1);
+  if (e.target.type === "radio") syncWhy();
+  const q = e.target.closest(".q"); if (q) q.classList.remove("err");
+});
+$("#audit-form").addEventListener("input", e => { const q = e.target.closest(".q"); if (q) q.classList.remove("err"); });
+
+function readForm() {
+  const v = id => ($("#" + id)?.value || "").trim();
+  const A = {
+    synopsis: v("f-synopsis"),
+    q1: radio("f-q1"), q1Why: radio("f-q1") === "No" ? v("f-q1why") : "",
+    q2: radio("f-q2"),
+    q3: radio("f-q3"), q3Why: radio("f-q3") === "No" ? v("f-q3why") : "",
+    q4: [...document.querySelectorAll("#f-q4 input:checked")].map(i => i.value),
+    q5: radio("f-q5"), q6: v("f-q6"), q12: v("f-q12"), issues: {},
+  };
+  if ($("#f-agentAudited")) A.agentAudited = v("f-agentAudited");
+  for (const sec of S.cfg.taxonomy.sections) {
+    const l1 = v(`f-${sec.key}-l1`);
+    A.issues[sec.key] = l1 === NO_ISSUE ? { l1, l2: "", comment: "" } : { l1, l2: v(`f-${sec.key}-l2`), comment: v(`f-${sec.key}-c`) };
+  }
+  const bad = [];
+  if ($("#f-agentAudited") && !A.agentAudited) bad.push("agentAudited");
+  if (!A.synopsis) bad.push("synopsis");
+  if (!A.q1 || (A.q1 === "No" && !A.q1Why)) bad.push("q1");
+  if (!A.q2) bad.push("q2");
+  if (!A.q3 || (A.q3 === "No" && !A.q3Why)) bad.push("q3");
+  if (!A.q4.length) bad.push("q4");
+  if (!A.q5) bad.push("q5");
+  if (!A.q6) bad.push("q6");
+  for (const sec of S.cfg.taxonomy.sections) {
+    const x = A.issues[sec.key];
+    if (!x.l1 || (x.l1 !== NO_ISSUE && (!x.l2 || !x.comment))) bad.push("issue-" + sec.key);
+  }
+  if (!A.q12) bad.push("q12");
+  return { A, bad };
+}
+$("#audit-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!cfgReady()) return;
+  const { A, bad } = readForm();
+  document.querySelectorAll("#audit-form .q").forEach(q => q.classList.toggle("err", bad.includes(q.dataset.q)));
+  const msg = $("#f-msg");
+  if (bad.length) {
+    msg.textContent = `Fill the ${bad.length} highlighted question${bad.length > 1 ? "s" : ""} to continue.`;
+    document.querySelector("#audit-form .q.err")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    return;
+  }
+  const btn = $("#f-submit"); btn.disabled = true; msg.textContent = "Saving…";
+  try {
+    if (S.editing) await saveEdit(A); else await saveNew(A);
+  } catch (err) {
+    msg.textContent = err?.status === 403 ? "SharePoint didn't allow this save. Ask an owner to check your permissions on the Call Audit site."
+      : (err?.message || "Saving failed. Try again.");
+  } finally { btn.disabled = false; }
+});
+async function saveNew(A) {
+  const L = S.lead; if (!L) return;
+  // Re-read the list so a lead audited a moment ago by someone else is caught before saving.
+  await loadAudits();
+  if (auditsByPhone().get(L.p)) { $("#f-msg").textContent = ""; toast("This lead has just been audited by someone else."); renderLookupState(); return; }
+  const now = Date.now();
+  const rec = {
+    phone: L.p, auditorId: S.me.id, ts: now, submittedAt: new Date(now).toISOString(), formVersion: FORM_VERSION,
+    agentAudited: A.agentAudited || L.agent, lead: leadSnapshot(L), answers: A,
+  };
+  delete rec.answers.agentAudited;
+  try {
+    await gx(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items`, { method: "POST", body: JSON.stringify({ fields: auditFields(rec) }) });
+  } catch (e) {
+    // The unique Phone column refuses a duplicate that slipped in between the check and the save.
+    if (e.status === 409 || /unique|duplicate/i.test(e.message)) { await loadAudits(); toast("This lead has just been audited by someone else."); renderLookupState(); return; }
+    throw e;
+  }
+  toast(`Audit saved for ${L.p}.`);
+  S.lead = null; $("#lookup-q").value = ""; $("#form-card").hidden = true; $("#audit-form").dataset.phone = "";
+  await loadAudits();
+}
+
+/* ---------- owner edit / delete ---------- */
+function startEdit(key) {
+  const a = S.audits.get(key); if (!a || !S.me.isOwner) return;
+  closeDrawer(); S.editing = key; S.lead = null; setTab("new");
+  $("#new-title").textContent = "Edit audit";
+  $("#lookup-msg").hidden = true;
+  $("#lead-card").innerHTML = leadCardHtml(a.d.lead || {});
+  const rec = structuredClone(a.d); rec.answers = { ...rec.answers, agentAudited: rec.agentAudited };
+  buildForm(rec, a.phone); $("#form-card").hidden = false;
+  window.scrollTo({ top: 0 });
+}
+function cancelEdit(rerender) {
+  S.editing = null; $("#form-card").hidden = true; $("#audit-form").dataset.phone = "";
+  if (rerender) { $("#lead-card").innerHTML = ""; render(); }
+}
+async function saveEdit(A) {
+  const a = S.audits.get(S.editing);
+  if (!a) { cancelEdit(true); throw new Error("This audit was deleted, so there is nothing to save."); }
+  const body = structuredClone(a.d);
+  body.answers = { ...A }; delete body.answers.agentAudited;
+  if (A.agentAudited) body.agentAudited = A.agentAudited;
+  body.updatedAt = new Date().toISOString(); body.updatedBy = S.me.id;
+  await gx(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items/${a.key}/fields`, { method: "PATCH", body: JSON.stringify(auditFields(body)) });
+  a.d = body;
+  toast("Changes saved."); cancelEdit(true);
+}
+async function deleteAudit(key) {
+  const a = S.audits.get(key); if (!a || !S.me.isOwner) return;
+  await gx(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items/${a.key}`, { method: "DELETE" });
+  S.audits.delete(key); closeDrawer();
+  if (S.editing === key) cancelEdit(true);
+  toast(`Audit for ${a.phone} deleted.`); render();
+}
+
+/* ---------- drawer ---------- */
+let drawerSig = null;
+function openDrawer(key) { S.opener = document.activeElement; S.openKey = key; renderDrawer(true); $("#drawer-root .drawer-h [data-close]")?.focus(); }
+function closeDrawer() {
+  S.openKey = null; drawerSig = null; $("#drawer-root").innerHTML = "";
+  if (S.opener?.isConnected) S.opener.focus();
+  S.opener = null;
+}
+function renderDrawer(force) {
+  const a = S.audits.get(S.openKey);
+  if (!a) { closeDrawer(); return; }
+  const sig = [a.d, nameOf(a.uid), (auditsByPhone().get(a.phone) || []).length, S.cfg.taxonomy];
+  if (!force && drawerSig && sig.every((v, i) => v === drawerSig[i])) return;
+  drawerSig = sig;
+  const d = a.d, A = d.answers || {}, L = d.lead || {};
+  const dl = (k, v) => `<dt>${esc(k)}</dt><dd>${esc(v || "—")}</dd>`;
+  const secs = S.cfg.taxonomy?.sections || Object.keys(A.issues || {}).map(k => ({ key: k, label: k }));
+  const issueHtml = secs.map(s => { const x = A.issues?.[s.key]; if (!x) return ""; return dl(s.label, x.l1 === NO_ISSUE ? NO_ISSUE : `${x.l1} › ${x.l2}${x.comment ? "\n" + x.comment : ""}`); }).join("");
+  const dupCount = (auditsByPhone().get(a.phone) || []).length;
+  $("#drawer-root").innerHTML = `
+    <div class="scrim" data-close></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-title">
+      <div class="drawer-h">
+        <div><h3 id="dr-title" class="num">${esc(a.phone)}</h3>
+          <div class="muted" style="font-size:13px">Audited by <b>${esc(nameOf(a.uid))}</b> · ${esc(fmtTs(d.ts))}${d.updatedAt ? ` · edited ${esc(fmtTs(Date.parse(d.updatedAt)))}` : ""}</div>
+          ${dupCount > 1 ? `<span class="pill dup" style="margin-top:6px">${dupCount} audits on this lead</span>` : ""}</div>
+        <button class="btn small" data-close aria-label="Close">Close</button>
+      </div>
+      <div class="drawer-b">
+        ${S.me.isOwner ? `<div class="row" id="dr-actions"><button class="btn small" data-edit>Edit</button><button class="btn small danger" data-del>Delete</button></div>` : ""}
+        ${leadCardHtml(L)}
+        <dl class="ans">
+          <p class="sec-t">Agent</p>${dl("Agent on lead / heard on calls", `${L.agent || "—"} / ${d.agentAudited || "—"}`)}
+          <p class="sec-t">Synopsis</p>${dl("What happened across the calls", A.synopsis)}
+          <p class="sec-t">Questionnaire</p>
+          ${dl("1. Interested initially?", A.q1 + (A.q1Why ? " — " + A.q1Why : ""))}
+          ${dl("2. Understood DF Club Membership?", A.q2)}
+          ${dl("3. Complete product pitched?", A.q3 + (A.q3Why ? " — " + A.q3Why : ""))}
+          ${dl("4. Services of most interest", (A.q4 || []).join(", "))}
+          ${dl("5. Would buy if sold independently?", A.q5)}
+          ${dl("6. Target City", A.q6)}
+          <p class="sec-t">Issues</p>${issueHtml}
+          <p class="sec-t">Outcome</p>${dl("Why the customer did not buy", A.q12)}
+        </dl>
+      </div>
+    </aside>`;
+  const root = $("#drawer-root");
+  root.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", closeDrawer));
+  root.querySelector("[data-edit]")?.addEventListener("click", () => startEdit(a.key));
+  root.querySelector("[data-del]")?.addEventListener("click", () => {
+    $("#dr-actions").innerHTML = `<span>Delete this audit permanently?</span><button class="btn small danger" data-yes>Delete</button><button class="btn small" data-no>Keep</button>`;
+    root.querySelector("[data-yes]").addEventListener("click", () => deleteAudit(a.key).catch(() => toast("Delete failed. Try again.")));
+    root.querySelector("[data-no]").addEventListener("click", () => renderDrawer(true));
+  });
+}
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && S.openKey) closeDrawer();
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("tr[data-open],tr[data-aud]")) { e.preventDefault(); e.target.click(); }
+});
+
+/* ---------- All Audits ---------- */
+const FILTER_IDS = ["f-q", "f-auditor", "f-agent", "f-cat", "f-band", "f-src", "f-from", "f-to"];
+FILTER_IDS.forEach(id => $("#" + id).addEventListener(id === "f-q" ? "input" : "change", () => renderAll()));
+function setOptions(sel, values, labelFn = v => v, all = "All") {
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${all}</option>` + values.map(v => `<option value="${esc(v)}">${esc(labelFn(v))}</option>`).join("");
+  if (values.includes(cur)) sel.value = cur;
+}
+function filtered() {
+  const q = $("#f-q").value.trim().toLowerCase();
+  const fa = $("#f-auditor").value, fg = $("#f-agent").value, fc = $("#f-cat").value, fb = $("#f-band").value, fs = $("#f-src").value;
+  const from = $("#f-from").value ? new Date($("#f-from").value + "T00:00:00").getTime() : 0;
+  const to = $("#f-to").value ? new Date($("#f-to").value + "T23:59:59").getTime() : Infinity;
+  return auditList().filter(a => {
+    const L = a.d.lead || {};
+    if (fa && a.uid !== fa) return false;
+    if (fg && a.d.agentAudited !== fg && L.agent !== fg) return false;
+    if (fc && L.category !== fc) return false;
+    if (fb && L.talkBand !== fb) return false;
+    if (fs && L.source !== fs) return false;
+    if (a.d.ts < from || a.d.ts > to) return false;
+    if (q) { const hay = [a.phone, L.leadId, L.city, L.campaign, JSON.stringify(a.d.answers || {})].join(" ").toLowerCase(); if (!hay.includes(q)) return false; }
+    return true;
+  });
+}
+function renderAll() {
+  const list = auditList();
+  setOptions($("#f-auditor"), [...S.auditors].filter(u => list.some(a => a.uid === u)), nameOf, "All auditors");
+  const uniq = f => [...new Set(list.map(f).filter(Boolean))].sort();
+  setOptions($("#f-agent"), uniq(a => a.d.agentAudited), v => v, "All agents");
+  setOptions($("#f-cat"), uniq(a => a.d.lead?.category), v => v, "All categories");
+  setOptions($("#f-band"), uniq(a => a.d.lead?.talkBand).sort((x, y) => bandRank(x) - bandRank(y)), v => v, "All bands");
+  setOptions($("#f-src"), uniq(a => a.d.lead?.source), v => v, "All sources");
+  const dups = [...auditsByPhone().entries()].filter(([, v]) => v.length > 1);
+  const db = $("#dup-banner");
+  db.hidden = !dups.length;
+  if (dups.length) db.innerHTML = `${dups.length} lead${dups.length > 1 ? "s have" : " has"} more than one audit (submitted at the same moment): <b class="num">${dups.map(d => esc(d[0])).join(", ")}</b>.${S.me.isOwner ? " Open one and delete the extra audit." : ""}`;
+  const rows = filtered();
+  $("#all-count").textContent = `${fmtN(rows.length)} of ${fmtN(list.length)} audits`;
+  const dupSet = new Set(dups.map(d => d[0]));
+  $("#all-body").innerHTML = rows.length ? rows.map(a => {
+    const L = a.d.lead || {}, A = a.d.answers || {};
+    return `<tr class="click" tabindex="0" data-open="${esc(a.key)}">
+      <td class="num" style="white-space:nowrap">${esc(fmtTs(a.d.ts))}</td><td>${esc(nameOf(a.uid))}</td>
+      <td class="num">${esc(a.phone)} ${dupSet.has(a.phone) ? `<span class="pill dup">Duplicate</span>` : ""}${a.d.updatedAt ? ` <span class="pill edited">Edited</span>` : ""}</td>
+      <td>${esc(a.d.agentAudited || L.agent || "")}</td><td>${esc(L.category || "")}</td><td style="white-space:nowrap">${esc(L.talkBand || "")}</td>
+      <td>${esc(L.source || "")}</td><td>${esc(A.q1 || "")}</td><td class="clip">${esc(A.q12 || "")}</td></tr>`;
+  }).join("") : `<tr><td colspan="9"><div class="empty"><b>${list.length ? "No audits match these filters" : "No audits yet"}</b>${list.length ? "Clear a filter to see more." : "Audits appear here as soon as anyone submits one from the New Audit tab."}</div></td></tr>`;
+}
+
+/* ---------- Auditors ---------- */
+function periodStarts() {
+  const n = new Date(), day = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  const wk = new Date(day); wk.setDate(day.getDate() - ((day.getDay() + 6) % 7));
+  return { day: day.getTime(), week: wk.getTime(), month: new Date(n.getFullYear(), n.getMonth(), 1).getTime() };
+}
+function renderAuditors() {
+  const P = periodStarts(), stats = new Map();
+  for (const a of S.audits.values()) {
+    const s = stats.get(a.uid) || { t: 0, w: 0, m: 0, all: 0, last: 0 };
+    const ts = a.d.ts || 0;
+    s.all++; if (ts >= P.day) s.t++; if (ts >= P.week) s.w++; if (ts >= P.month) s.m++; s.last = Math.max(s.last, ts);
+    stats.set(a.uid, s);
+  }
+  const rows = [...stats.entries()].sort((x, y) => y[1].all - x[1].all);
+  const tot = rows.reduce((acc, [, s]) => ({ t: acc.t + s.t, w: acc.w + s.w, m: acc.m + s.m, all: acc.all + s.all }), { t: 0, w: 0, m: 0, all: 0 });
+  $("#aud-body").innerHTML = rows.length ? rows.map(([uid, s]) => `<tr class="click ${S.selAuditor === uid ? "sel" : ""}" tabindex="0" data-aud="${esc(uid)}">
+      <td><b>${esc(nameOf(uid))}</b></td><td class="r num">${s.t}</td><td class="r num">${s.w}</td><td class="r num">${s.m}</td><td class="r num"><b>${s.all}</b></td><td class="num muted">${esc(fmtTs(s.last))}</td></tr>`).join("")
+    + `<tr><td><b>All auditors</b></td><td class="r num"><b>${tot.t}</b></td><td class="r num"><b>${tot.w}</b></td><td class="r num"><b>${tot.m}</b></td><td class="r num"><b>${tot.all}</b></td><td></td></tr>`
+    : `<tr><td colspan="6"><div class="empty"><b>No audits yet</b>Each auditor appears here after their first submitted audit.</div></td></tr>`;
+  $("#aud-body").querySelectorAll("[data-aud]").forEach(tr => tr.addEventListener("click", () => { S.selAuditor = S.selAuditor === tr.dataset.aud ? null : tr.dataset.aud; renderAuditors(); }));
+  const box = $("#aud-detail");
+  if (!S.selAuditor || !stats.has(S.selAuditor)) { box.hidden = true; return; }
+  const mine = auditList().filter(a => a.uid === S.selAuditor);
+  box.hidden = false;
+  box.innerHTML = `<div><h2>${esc(nameOf(S.selAuditor))}</h2><p class="sub">${fmtN(mine.length)} leads audited. Select a lead to read its audit.</p></div>
+    ${gridHtml(mine, false)}
+    <div class="tbl-wrap"><table><thead><tr><th>Submitted</th><th>Phone</th><th>Lead ID</th><th>Agent</th><th>Category</th><th>Band</th></tr></thead><tbody>
+    ${mine.map(a => { const L = a.d.lead || {}; return `<tr class="click" tabindex="0" data-open="${esc(a.key)}"><td class="num" style="white-space:nowrap">${esc(fmtTs(a.d.ts))}</td><td class="num">${esc(a.phone)}</td><td class="num">${esc(L.leadId || "—")}</td><td>${esc(a.d.agentAudited || L.agent || "")}</td><td>${esc(L.category || "")}</td><td style="white-space:nowrap">${esc(L.talkBand || "")}</td></tr>`; }).join("")}
+    </tbody></table></div>`;
+}
+
+/* ---------- Coverage ---------- */
+function gridHtml(audits, withPool) {
+  const cats = S.dicts?.cat || [...new Set(audits.map(a => a.d.lead?.category).filter(Boolean))];
+  const bands = [...new Set([...(S.dicts?.band || []), ...audits.map(a => a.d.lead?.talkBand).filter(Boolean)])].sort((x, y) => bandRank(x) - bandRank(y));
+  const pool = new Map(), done = new Map();
+  if (withPool) for (const L of S.pool) { const k = L.cat + "|" + L.band; pool.set(k, (pool.get(k) || 0) + 1); }
+  const seen = new Set();
+  for (const a of audits) {
+    if (withPool) { if (seen.has(a.phone)) continue; seen.add(a.phone); }
+    const L = a.d.lead || {}, k = L.category + "|" + L.talkBand;
+    done.set(k, (done.get(k) || 0) + 1);
+  }
+  const cell = (k) => {
+    const d = done.get(k) || 0;
+    if (!withPool) return `<td class="r num">${d || "<span class='muted'>0</span>"}</td>`;
+    const p = pool.get(k) || 0;
+    if (!p) return `<td class="r muted">—</td>`;
+    const pct = d / p * 100;
+    return `<td><div class="cov"><span class="num"><b>${fmtN(d)}</b> <span class="muted">/ ${fmtN(p)} · ${pct < 0.1 && d ? "<0.1" : pct.toFixed(1)}%</span></span><div class="bar"><i style="width:${Math.min(100, pct)}%"></i></div></div></td>`;
+  };
+  const sumRow = (keys) => { let d = 0, p = 0; for (const k of keys) { d += done.get(k) || 0; p += pool.get(k) || 0; } return { d, p }; };
+  const totCell = ({ d, p }) => withPool ? `<td class="num"><b>${fmtN(d)}</b> <span class="muted">/ ${fmtN(p)}${p ? " · " + (d / p * 100).toFixed(1) + "%" : ""}</span></td>` : `<td class="r num"><b>${d}</b></td>`;
+  return `<div class="tbl-wrap"><table>
+    <thead><tr><th>Lead category</th>${bands.map(b => `<th${withPool ? "" : " class='r'"}>${esc(b)}</th>`).join("")}<th${withPool ? "" : " class='r'"}>Total</th></tr></thead>
+    <tbody>${cats.map(c => `<tr><td>${esc(c)}</td>${bands.map(b => cell(c + "|" + b)).join("")}${totCell(sumRow(bands.map(b => c + "|" + b)))}</tr>`).join("")}
+    <tr><td><b>All categories</b></td>${bands.map(b => totCell(sumRow(cats.map(c => c + "|" + b)))).join("")}${totCell(sumRow(cats.flatMap(c => bands.map(b => c + "|" + b))))}</tr></tbody>
+  </table></div>`;
+}
+function renderCoverage() {
+  $("#cov-table").outerHTML = `<table id="cov-table"></table>`;
+  const wrap = $("#cov-table").parentElement;
+  wrap.outerHTML = gridHtml(auditList(), true).replace('<div class="tbl-wrap"><table>', '<div class="tbl-wrap"><table id="cov-table">');
+  $("#cov-sub").textContent = `Leads audited out of the ${fmtN(S.pool.length)}-lead audit pool, by lead category and talk-time band. Lead data as of ${S.built || "…"}.`;
+}
+
+/* ---------- Settings ---------- */
+let settingsDirty = false;
+function renderSettings(fromCfg = false) {
+  if (!S.me.isOwner) { setTab("new"); return; }
+  $("#pool-status").innerHTML = S.pool.length ? `Current pool: <b>${fmtN(S.pool.length)}</b> leads · lead data as of ${esc(S.built)}` : "No lead pool loaded yet.";
+  if (settingsDirty && fromCfg) return;
+  if ($("#set-sections").dataset.filled && !fromCfg) return;
+  const secs = S.cfg.taxonomy?.sections || [];
+  $("#set-sections").innerHTML = secs.length ? secs.map(s => `<div><label class="lbl" for="set-${esc(s.key)}">${esc(s.label)}</label>
+      <textarea id="set-${esc(s.key)}" data-key="${esc(s.key)}" data-label="${esc(s.label)}" rows="9">${esc(s.options.flatMap(o => o.l2.map(l2 => `${o.l1} > ${l2}`)).join("\n"))}</textarea></div>`).join("")
+    : `<div class="empty"><b>No lists saved yet</b>${S.cfg.taxonomy === undefined ? "Loading…" : "The lists haven't been set up."}</div>`;
+  $("#set-services").value = (S.cfg.services?.services || []).join("\n");
+  $("#set-save").disabled = !cfgReady();
+  $("#set-sections").dataset.filled = S.cfg.taxonomy ? "1" : "";
+  $("#set-msg").textContent = S.cfg.taxonomy?.updatedAt ? `Last saved ${fmtTs(Date.parse(S.cfg.taxonomy.updatedAt))}` : "";
+}
+document.addEventListener("input", e => { if (e.target.closest("#view-settings")) settingsDirty = true; });
+$("#set-save").addEventListener("click", async () => {
+  if (!S.me.isOwner || !S.sp?.settings) return;
+  const sections = [...document.querySelectorAll("#set-sections textarea")].map(t => {
+    const map = new Map();
+    for (const line of t.value.split("\n").map(l => l.trim()).filter(Boolean)) {
+      const i = line.indexOf(">"); const l1 = (i < 0 ? line : line.slice(0, i)).trim(), l2 = (i < 0 ? line : line.slice(i + 1)).trim();
+      if (!map.has(l1)) map.set(l1, []); if (l2 && !map.get(l1).includes(l2)) map.get(l1).push(l2);
+    }
+    return { key: t.dataset.key, label: t.dataset.label, options: [...map].map(([l1, l2]) => ({ l1, l2 })) };
+  });
+  const services = $("#set-services").value.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!cfgReady() || !sections.length || sections.some(x => !x.options.length) || !services.length) {
+    $("#set-msg").textContent = "Every list needs at least one option. Nothing was saved.";
+    return;
+  }
+  $("#set-msg").textContent = "Saving…";
+  try {
+    await saveSetting("taxonomy", { ...S.cfg.taxonomy, sections });
+    await saveSetting("services", { services });
+    settingsDirty = false; $("#set-sections").dataset.filled = ""; toast("Lists saved."); renderSettings(true);
+  } catch (err) { $("#set-msg").textContent = "Saving failed. Try again."; }
+});
+
+$("#pool-file").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file || !S.me.isOwner || !S.sp) return;
+  const msg = $("#pool-msg");
+  let j;
+  try { j = JSON.parse(await file.text()); } catch (err) { msg.textContent = "That file isn't valid JSON. Choose the leads.json made by the build script."; return; }
+  const ok = j && Array.isArray(j.rows) && j.rows.length && Array.isArray(j.fields) && ["ph", "lh", "le"].every(f => j.fields.includes(f)) && j.mask && j.dicts;
+  if (!ok) { msg.textContent = "This isn't a masked lead file (it needs ph, lh and le columns). Choose the leads.json made by the build script."; return; }
+  msg.textContent = "Uploading to SharePoint…";
+  try {
+    await gx(`/sites/${S.sp.siteId}/drive/root:/${encodeURIComponent(CFG.poolFolder)}/leads.json:/content`, { method: "PUT", body: file, headers: { "Content-Type": "application/json" } });
+    S.poolTag = null; await loadPool();
+    msg.textContent = `Loaded ${fmtN(j.rows.length)} leads.`;
+    toast("Lead pool updated.");
+  } catch (err) {
+    msg.textContent = "The upload failed: " + err.message;
+  }
+});
+
+/* ---------- Excel export (owner) ---------- */
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+}
+$("#btn-export").addEventListener("click", async () => {
+  if (!S.me.isOwner) return;
+  const btn = $("#btn-export"); btn.disabled = true;
+  try {
+    await loadXlsx();
+    const secs = S.cfg.taxonomy?.sections || [];
+    const rows = filtered().map(a => {
+      const L = a.d.lead || {}, A = a.d.answers || {};
+      const r = {
+        "Auditor": nameOf(a.uid), "Submitted": fmtTs(a.d.ts), "Phone": a.phone, "Lead ID": L.leadId,
+        "Agent (lead)": L.agent, "Agent (heard on calls)": a.d.agentAudited, "Lead Category": L.category, "Talk-time Band": L.talkBand,
+        "Talk Time (min)": L.talkTimeMin, "R1": L.r1, "R2": L.r2, "Total Dials": L.totalDials, "Ever Connected": L.everConnected,
+        "Lead Created": L.leadCreated, "Source": L.source, "City (CRM)": L.city, "Campaign": L.campaign, "Ad Set": L.adset, "Ad": L.ad,
+        "Total Calls": L.totalCalls, "Connected Calls": L.connectedCalls, "First Call": L.firstCall, "Last Call": L.lastCall,
+        "Call Synopsis": A.synopsis, "Q1 Interested Initially": A.q1, "Q1 If No, Why": A.q1Why,
+        "Q2 Understood DF Club": A.q2, "Q3 Complete Product Pitched": A.q3, "Q3 If No, Why": A.q3Why,
+        "Q4 Services of Interest": (A.q4 || []).join(", "), "Q5 Would Buy Standalone": A.q5, "Q6 Target City": A.q6,
+      };
+      const keys = secs.length ? secs : Object.keys(A.issues || {}).map(k => ({ key: k, label: k }));
+      for (const s of keys) { const x = A.issues?.[s.key] || {}; r[`${s.label} L1`] = x.l1 || ""; r[`${s.label} L2`] = x.l2 || ""; r[`${s.label} Comment`] = x.comment || ""; }
+      r["Q12 Why Not Bought"] = A.q12; r["Edited At"] = a.d.updatedAt ? fmtTs(Date.parse(a.d.updatedAt)) : ""; r["Form Version"] = a.d.formVersion;
+      return r;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Audits");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const d = new Date();
+    const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    const link = document.createElement("a");
+    link.href = url; link.download = `Call Audits ${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}.xlsx`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast(`Downloaded ${rows.length} audits.`);
+  } catch (err) {
+    toast("The download didn't complete. Try again.");
+  } finally { btn.disabled = false; }
+});
+
+$("#btn-refresh").addEventListener("click", async () => {
+  if (!S.sp?.audits) return;
+  toast("Reloading audits…");
+  try { await Promise.all([loadAudits(), loadPool()]); } catch (e) { dbErr(e); }
+});
+
+/* Defaults written to SharePoint the first time an owner creates the lists
+   (from "Updated Metric for Audit.xlsx" Issue Mapping and dreamfolks.com/dreamfolksclub). */
+const DEFAULT_TAXONOMY = [
+ {
+  "key": "agent",
+  "label": "Agent Issue",
+  "options": [
+   {
+    "l1": "Agent Issue",
+    "l2": [
+     "Abrupt Hungup",
+     "No Sale Intent",
+     "Mis-selling",
+     "Incomplete information",
+     "No sales pitch",
+     "Sarcastic / Rude tone"
+    ]
+   },
+   {
+    "l1": "Not Attempted",
+    "l2": [
+     "Not Attempted"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "customer",
+  "label": "Customer Issue",
+  "options": [
+   {
+    "l1": "Connected-Not_Interested",
+    "l2": [
+     "Needs more discount",
+     "Age criteria",
+     "Not decision maker",
+     "Do not call",
+     "Budget Issue",
+     "Wants Domestic Lounge Only",
+     "Wants Only Golf",
+     "Wants Only Global Lounge",
+     "Wants Only Coffee",
+     "Not a Frequent Traveller / No Travel Plans"
+    ]
+   },
+   {
+    "l1": "Junk Lead",
+    "l2": [
+     "Abusive Customer"
+    ]
+   },
+   {
+    "l1": "Process Media Exclusion",
+    "l2": [
+     "DNC"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "marketing",
+  "label": "Marketing Issue",
+  "options": [
+   {
+    "l1": "Not_connected",
+    "l2": [
+     "Number not in service",
+     "Wrong number"
+    ]
+   },
+   {
+    "l1": "Connected-Not_Interested",
+    "l2": [
+     "Just browsing/No Requirement",
+     "Service call",
+     "Already Has a Membership",
+     "Trust Concern / Suspects Fraud",
+     "Bank Card Lounge Query",
+     "Looking for Free Access / Free Card"
+    ]
+   },
+   {
+    "l1": "Junk Lead",
+    "l2": [
+     "Loan",
+     "Never Enquired",
+     "Not a target customer",
+     "Applied for Job",
+     "Missing contact details"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "product",
+  "label": "Product Issue",
+  "options": [
+   {
+    "l1": "Connected-Not_Interested",
+    "l2": [
+     "Not happy with price",
+     "Service not available in target city",
+     "Missing feature",
+     "Does not meet need",
+     "Most Benefits Already Covered in Bank Cards",
+     "Unhappy with Applied Restrictions on Product",
+     "Unhappy with Domicile Constraint",
+     "Outlets Very Far from Customer’s Location",
+     "All Services Not Available at Customer’s Base Location",
+     "Poor Inventory Coverage at Customer’s Base Location"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "other",
+  "label": "Any Other Issue",
+  "options": [
+   {
+    "l1": "Connected-Not_Interested",
+    "l2": [
+     "Language Barrier",
+     "Not Interested – No Reason Given"
+    ]
+   },
+   {
+    "l1": "campaign.system.disposition",
+    "l2": [
+     "wrap.timeout"
+    ]
+   },
+   {
+    "l1": "Other Issues",
+    "l2": [
+     "No conversation",
+     "No real conversation"
+    ]
+   }
+  ]
+ }
+];
+const DEFAULT_SERVICES = ["Private Club Membership", "Golf", "Global Airport Lounges", "Railway Lounges", "Global Brews (Coffee)", "Fine Dining", "Salon", "Luxury Transfer", "Hotels", "Wellness (Spa)", "Entertainment", "Global Travel e-SIM"];
+
+/* ---------- boot ---------- */
+(function boot() {
+  let t = "new"; try { t = localStorage.getItem("dfca-tab") || "new"; } catch (e) {}
+  if (t === "settings") t = "new";
+  setTab(t);
+  if (location.protocol === "file:") {
+    S.dbState = "off"; $("#chip-me").textContent = "Not connected";
+    showGlobal("This page was opened as a file on your computer, so it can't sign you in. Open the Call Audit tool from its web address.");
+    render(); return;
+  }
+  if (!CFG.clientId || /REPLACE/.test(CFG.clientId + CFG.tenantId + CFG.siteHost)) {
+    S.dbState = "off"; $("#chip-me").textContent = "Not set up";
+    showGlobal("Setup isn't finished: config.js still needs the tenant ID, app client ID and SharePoint site. See IT-SETUP.md.");
+    render(); return;
+  }
+  signIn()
+    .then(acct => acct && connect())
+    .catch(e => { S.dbState = "error"; showGlobal("Sign-in or SharePoint connection failed: " + (e?.message || e)); render(); });
+})();
+</script>
+</body>
+</html>
