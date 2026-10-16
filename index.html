@@ -289,10 +289,10 @@ td.r,th.r{text-align:right}
   <section id="view-users" class="stack" hidden>
     <div class="card stack">
       <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div style="min-width:0;flex:1 1 320px"><h2>Users and tab access</h2><p class="sub">Same process as the Sales Dashboard. Make changes here, click <b>Save users file</b>, then put the downloaded <b>users.json</b> in the Call Audit repository and push. Changes apply once it's deployed. Passwords are saved scrambled, so they can't be read back. Set a new one if someone forgets theirs.</p></div>
-        <button class="btn primary" id="u-save" type="button">Save users file</button>
+        <div style="min-width:0;flex:1 1 320px"><h2>Users and tab access</h2><p class="sub">Add people, tick their tabs and click <b>Save users</b>. Changes are saved to the audit database and apply immediately. Passwords are saved scrambled, so they can't be read back. Set a new one if someone forgets theirs.</p></div>
+        <button class="btn primary" id="u-save" type="button">Save users</button>
       </div>
-      <div id="u-dirty" class="banner warn" hidden>You have unsaved changes. Click <b>Save users file</b>, then commit users.json and push to deploy them.</div>
+      <div id="u-dirty" class="banner warn" hidden>You have unsaved changes. Click <b>Save users</b> to apply them.</div>
       <form id="user-add" class="filters" autocomplete="off" novalidate>
         <div><label class="lbl" for="u-email">Login ID</label><input type="text" id="u-email" placeholder="name@dreamfolks.com" autocomplete="off"></div>
         <div><label class="lbl" for="u-name">Name</label><input type="text" id="u-name" placeholder="Full name" autocomplete="off"></div>
@@ -585,7 +585,7 @@ $("#users-body").addEventListener("click", async e => {
   if (t.dataset.pwok) {
     const inp = $(`#users-body input[data-pwin="${CSS.escape(t.dataset.pwok)}"]`), u = S.users.get(t.dataset.pwok);
     if (!inp || inp.value.length < 8) { toast("Passwords need at least 8 characters."); return; }
-    u.password = await hashPassword(inp.value); markDirty(); renderUsers(); toast(`New password set for ${u.name || u.loginId}. Save the users file to apply it.`); return;
+    u.password = await hashPassword(inp.value); markDirty(); renderUsers(); toast(`New password set for ${u.name || u.loginId}. Click Save users to apply it.`); return;
   }
   if ("pwno" in t.dataset || "noRm" in t.dataset) { renderUsers(); return; }
   if (t.dataset.remove) { t.parentElement.innerHTML = `<span class="row" style="gap:6px;flex-wrap:nowrap">Remove? <button class="btn small danger" type="button" data-yes-rm="${esc(t.dataset.remove)}">Remove</button><button class="btn small" type="button" data-no-rm>Keep</button></span>`; return; }
@@ -600,19 +600,23 @@ $("#user-add").addEventListener("submit", async e => {
   if (pw.length < 8) { msg.textContent = "Give them a password of at least 8 characters."; return; }
   S.users.set(loginId, { loginId, name, password: await hashPassword(pw), tabs: [...ROLE_TABS[role]], admin: role === "Admin", active: true });
   $("#u-email").value = ""; $("#u-name").value = ""; $("#u-pass").value = "";
-  msg.textContent = `Added ${name || loginId} as ${role}. Click Save users file to apply.`;
+  msg.textContent = `Added ${name || loginId} as ${role}. Click Save users to apply.`;
   markDirty(); renderUsers();
 });
-$("#u-save").addEventListener("click", () => {
+/* Save straight to the audit server's database: changes apply at once, no file or git step. */
+$("#u-save").addEventListener("click", async () => {
   if (!S.users) return;
-  const out = { generatedAt: new Date().toISOString().slice(0, 10), users: [...S.users.values()].map(u => ({ loginId: u.loginId, name: u.name || "", password: u.password || "", tabs: u.tabs, admin: !!u.admin, active: u.active !== false })) };
-  const missing = out.users.filter(u => !u.password).map(u => u.loginId);
+  const users = [...S.users.values()].map(u => ({ loginId: u.loginId, name: u.name || "", password: u.password || "", tabs: u.tabs, admin: !!u.admin, active: u.active !== false }));
+  const missing = users.filter(u => !u.password).map(u => u.loginId);
   if (missing.length) { $("#u-msg").textContent = "Set a password for: " + missing.join(", "); return; }
-  const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: "application/json" }));
-  const a = document.createElement("a"); a.href = url; a.download = "users.json"; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-  S.usersDirty = false; renderUsers();
-  $("#u-msg").textContent = "users.json downloaded. Put it in the Call Audit repository (replace the old one) and push. It applies once deployed.";
+  const btn = $("#u-save"); btn.disabled = true; $("#u-msg").textContent = "Saving…";
+  try {
+    const r = await api("/users", { method: "PUT", body: { users } });
+    S.usersDirty = false; S.users = null; renderUsers();   // reload what the server now holds
+    $("#u-msg").textContent = `Saved ${r.users} users. Changes apply immediately: new people can sign in now.`;
+    toast("Users saved.");
+  } catch (e) { $("#u-msg").textContent = "Not saved: " + e.message; }
+  finally { btn.disabled = false; }
 });
 
 /* ---------- derived ---------- */

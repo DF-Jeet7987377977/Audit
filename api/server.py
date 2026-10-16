@@ -101,6 +101,7 @@ class DB:
             submitted_at VARCHAR(32) NOT NULL, updated_at VARCHAR(32), updated_by VARCHAR(255), record {text} NOT NULL){tail}""")
         self.run(f"CREATE TABLE IF NOT EXISTS settings (k VARCHAR(64) PRIMARY KEY, v {text} NOT NULL, updated_at VARCHAR(32), updated_by VARCHAR(255)){tail}")
         self.run(f"CREATE TABLE IF NOT EXISTS lead_pool (id INT PRIMARY KEY, content {text} NOT NULL, rows_count INT, updated_at VARCHAR(32), updated_by VARCHAR(255)){tail}")
+        self.run(f"CREATE TABLE IF NOT EXISTS app_users (id INT PRIMARY KEY, content {text} NOT NULL, updated_at VARCHAR(32), updated_by VARCHAR(255)){tail}")
 
 
 def now_iso():
@@ -108,21 +109,38 @@ def now_iso():
 
 
 # ---------------------------------------------------------------- users + tokens
-_users = {"mtime": None, "by_login": {}}
+# Users live in the database (table app_users) once an admin has saved them on the Users tab.
+# Until then users.json is used, so the very first admin can sign in.
+_users = {"loaded": 0.0, "doc": {"users": []}, "by_login": {}, "source": None}
+USERS_TTL = 5  # seconds; a save on this server refreshes immediately
+
+
+def users_doc():
+    if time.time() - _users["loaded"] > USERS_TTL:
+        doc, source = None, "database"
+        try:
+            rows = DBI.run("SELECT content FROM app_users WHERE id=1", fetch=True)
+            doc = json.loads(rows[0]["content"]) if rows else None
+        except Exception as e:
+            log(f"users: database read failed ({e!r})")
+            if _users["source"]:
+                return _users["doc"]        # keep the last good list rather than locking everyone out
+        if doc is None:
+            source = USERS_FILE
+            try:
+                with open(USERS_FILE, encoding="utf-8") as f:
+                    doc = json.load(f)
+            except (OSError, ValueError):
+                doc = {"users": []}
+        by_login = {str(u.get("loginId", "")).strip().lower(): u for u in doc.get("users", []) if u.get("loginId")}
+        if source != _users["source"] or len(by_login) != len(_users["by_login"]):
+            log(f"users: {len(by_login)} from {source}")
+        _users.update(loaded=time.time(), doc=doc, by_login=by_login, source=source)
+    return _users["doc"]
 
 
 def users():
-    """users.json, reloaded whenever the file changes on disk (e.g. after a deploy)."""
-    try:
-        m = os.path.getmtime(USERS_FILE)
-    except OSError:
-        return {}
-    if m != _users["mtime"]:
-        with open(USERS_FILE, encoding="utf-8") as f:
-            data = json.load(f)
-        _users["by_login"] = {str(u.get("loginId", "")).strip().lower(): u for u in data.get("users", []) if u.get("loginId")}
-        _users["mtime"] = m
-        log(f"loaded {len(_users['by_login'])} users from {USERS_FILE}")
+    users_doc()
     return _users["by_login"]
 
 
@@ -285,7 +303,8 @@ class Handler(BaseHTTPRequestHandler):
             if not p.startswith("/api"):
                 return self.static(p) if STATIC and method == "GET" else self.err(404, "Not found")
             if p == "/api/ping":
-                return self.send(200, {"ok": True, "db": DBI.kind, "users": len(users())})
+                return self.send(200, {"ok": True, "db": DBI.kind, "users": len(users()),
+                                       "usersFrom": "database" if _users["source"] == "database" else "users.json"})
             if p == "/api/login" and method == "POST":
                 return self.login()
             me = self.me()
@@ -320,11 +339,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not me["admin"]:
                     return self.err(403, "Only admins can upload lead files.")
                 return self.excel(me, method, p)
-            if p == "/api/users" and method == "GET":
+            if p == "/api/users" and method in ("GET", "PUT"):
                 if not me["admin"]:
-                    return self.err(403, "Only admins can see users.")
-                with open(USERS_FILE, encoding="utf-8") as f:
-                    return self.send(200, json.load(f))
+                    return self.err(403, "Only admins can see or change users.")
+                return self.send(200, users_doc()) if method == "GET" else self.put_users(me)
             return self.err(404, "Not found")
         except ValueError as e:
             return self.err(400, str(e))
@@ -407,6 +425,37 @@ class Handler(BaseHTTPRequestHandler):
         else:
             DBI.run("INSERT INTO settings (k, v, updated_at, updated_by) VALUES (%s,%s,%s,%s)", (key, txt, val["updatedAt"], me["loginId"]))
         return self.send(200, val)
+
+    def put_users(self, me):
+        lst = self.body_json().get("users")
+        if not isinstance(lst, list) or not lst:
+            return self.err(400, "The user list is empty.")
+        out, seen = [], set()
+        for u in lst:
+            lid = str(u.get("loginId", "")).strip().lower()
+            if not lid:
+                return self.err(400, "Every user needs a login ID.")
+            if lid in seen:
+                return self.err(400, f"{lid} is listed twice.")
+            pw = str(u.get("password", ""))
+            if not pw.startswith("pbkdf2_sha256$") or len(pw.split("$")) != 4:
+                return self.err(400, f"Set a password for {lid}.")
+            seen.add(lid)
+            out.append({"loginId": lid, "name": str(u.get("name") or "")[:120], "password": pw,
+                        "tabs": [t for t in (u.get("tabs") or []) if t in WORK_TABS],
+                        "admin": bool(u.get("admin")), "active": u.get("active") is not False})
+        mine = next((u for u in out if u["loginId"] == me["loginId"]), None)
+        if not (mine and mine["admin"] and mine["active"]):
+            return self.err(400, "You can't remove your own admin access.")
+        ts = now_iso()
+        txt = json.dumps({"generatedAt": ts[:10], "users": out})
+        if DBI.run("SELECT id FROM app_users WHERE id=1", fetch=True):
+            DBI.run("UPDATE app_users SET content=%s, updated_at=%s, updated_by=%s WHERE id=1", (txt, ts, me["loginId"]))
+        else:
+            DBI.run("INSERT INTO app_users (id, content, updated_at, updated_by) VALUES (1,%s,%s,%s)", (txt, ts, me["loginId"]))
+        _users["loaded"] = 0.0
+        log(f"users saved by {me['loginId']}: {len(out)} users")
+        return self.send(200, {"ok": True, "users": len(out), "savedAt": ts})
 
     def get_pool(self):
         rows = DBI.run("SELECT content, updated_at FROM lead_pool WHERE id=1", fetch=True)

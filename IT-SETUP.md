@@ -59,7 +59,7 @@ curl -s https://salesaudit.dreamfolks.co.in/api/ping
 python tools/add_user.py simran.singh@dreamfolks.com "Simran Singh" --admin
 ```
 
-It asks for a password without showing it, and writes only the hash. Commit and push `users.json`. From then on, admins add and change everyone else on the **Users** tab: **Save users file**, put `users.json` in the repo, push.
+It asks for a password without showing it, and writes only the hash. Commit and push `users.json`. That file is only the **first-time seed**. Once an admin clicks **Save users** on the Users tab, users and tab rights are stored in MySQL (table `app_users`) and apply immediately. From then on `users.json` is ignored.
 
 ## 5. Automatic deployment (GitHub Actions)
 

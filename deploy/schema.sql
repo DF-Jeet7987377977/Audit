@@ -18,3 +18,5 @@ CREATE TABLE IF NOT EXISTS audits (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS settings (k VARCHAR(64) PRIMARY KEY, v LONGTEXT NOT NULL, updated_at VARCHAR(32), updated_by VARCHAR(255)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS lead_pool (id INT PRIMARY KEY, content LONGTEXT NOT NULL, rows_count INT, updated_at VARCHAR(32), updated_by VARCHAR(255)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- users and tab rights, saved from the Users tab (users.json is only the first-time seed)
+CREATE TABLE IF NOT EXISTS app_users (id INT PRIMARY KEY, content LONGTEXT NOT NULL, updated_at VARCHAR(32), updated_by VARCHAR(255)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
