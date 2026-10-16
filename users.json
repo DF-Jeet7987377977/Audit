@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-16",
+  "users": [
+    {
+      "loginId": "simran.singh@dreamfolks.com",
+      "name": "Simran Singh",
+      "password": "pbkdf2_sha256$200000$npQyuT6rE4Z6qUd1+Z2UWQ==$Geov0PUDwLpVsVPiCeWeLhvvLTxy/vafvowzI9MvsZQ=",
+      "tabs": [
+        "new",
+        "all",
+        "auditors",
+        "coverage"
+      ],
+      "admin": true,
+      "active": true
+    }
+  ]
+}
