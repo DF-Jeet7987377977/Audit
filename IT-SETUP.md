@@ -12,8 +12,8 @@ Owner / contact: Simran Singh (simran.singh@dreamfolks.com)
 
 Serve the repository files as static content over HTTPS. **Deployed at `https://salesaudit.dreamfolks.co.in/`.**
 
-- Files: `index.html`, `config.js`. No server-side code, database or build step.
-- The page loads Microsoft's sign-in library from `https://alcdn.msauth.net` and the Excel export library from `https://cdn.jsdelivr.net`. Allow both if a Content-Security-Policy is set.
+- Files: `index.html`, `config.js`, `vendor/msal-browser-2.38.3.min.js` (Microsoft's sign-in library, bundled). No server-side code, database or build step.
+- The page calls `https://login.microsoftonline.com` and `https://graph.microsoft.com`, and loads the Excel export library from `https://cdn.jsdelivr.net`. Allow these if a Content-Security-Policy is set.
 - Note the **exact URL** of `index.html`. Step 2 needs it.
 
 ## 2. Register the app in Microsoft Entra ID
