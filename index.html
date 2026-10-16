@@ -764,10 +764,11 @@ function onCfg() {
   const f = $("#audit-form");
   if (!$("#form-card").hidden && !f.dataset.built && (S.lead || S.editing)) buildForm(S.editing ? S.audits.get(S.editing)?.d : null, f.dataset.phone);
 }
-function ynHtml(id, val) {
-  return `<div class="seg" role="radiogroup" aria-label="Yes or No" id="${id}">
+function ynHtml(id, val, withMaybe = false) {
+  return `<div class="seg" role="radiogroup" aria-label="${withMaybe ? "Yes, No or Maybe" : "Yes or No"}" id="${id}">
     <input type="radio" name="${id}" id="${id}-y" value="Yes" ${val === "Yes" ? "checked" : ""}><label for="${id}-y">Yes</label>
-    <input type="radio" name="${id}" id="${id}-n" value="No" ${val === "No" ? "checked" : ""}><label for="${id}-n">No</label></div>`;
+    <input type="radio" name="${id}" id="${id}-n" value="No" ${val === "No" ? "checked" : ""}><label for="${id}-n">No</label>${withMaybe ? `
+    <input type="radio" name="${id}" id="${id}-m" value="Maybe" ${val === "Maybe" ? "checked" : ""}><label for="${id}-m">Maybe</label>` : ""}</div>`;
 }
 function qHtml(n, key, title, body) { return `<div class="q" role="group" aria-labelledby="qt-${key}" data-q="${key}"><div class="qh"><span class="qn">${n}</span><span class="qt" id="qt-${key}">${title}</span></div><div class="stack indent" style="gap:8px">${body}</div></div>`; }
 
@@ -807,7 +808,7 @@ function buildForm(rec, phone) {
     ${qHtml(2, "q2", "Did the customer have understanding of DF Club Membership?", ynHtml("f-q2", A.q2))}
     ${qHtml(3, "q3", "Was the complete product pitched to the customer?", ynHtml("f-q3", A.q3) + `<div data-why="q3"><label class="lbl" for="f-q3why">If No, why?</label><textarea id="f-q3why" rows="2">${esc(A.q3Why || "")}</textarea></div>`)}
     ${qHtml(4, "q4", "Which service did the customer have most interest in?", `<div class="svc" id="f-q4">${svcs.map((s, i) => `<label><input type="checkbox" id="f-q4-${i}" value="${esc(s)}" ${(A.q4 || []).includes(s) ? "checked" : ""}>${esc(s)}</label>`).join("")}</div>`)}
-    ${qHtml(5, "q5", "If the above service(s) were sold independently, would the customer buy?", ynHtml("f-q5", A.q5))}
+    ${qHtml(5, "q5", "If the above service(s) were sold independently, would the customer buy?", ynHtml("f-q5", A.q5, true))}
     ${qHtml(6, "q6", "Target City", `<input type="text" id="f-q6" aria-labelledby="qt-q6" placeholder="City the customer mentioned" value="${esc(A.q6 || "")}">`)}
     ${issues}
     ${qHtml(7 + nIssues, "q12", "Why did the customer not buy the product?", `<textarea id="f-q12" aria-labelledby="qt-q12" rows="3">${esc(A.q12 || "")}</textarea>`)}
