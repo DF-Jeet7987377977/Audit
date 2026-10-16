@@ -40,6 +40,11 @@ body{background:var(--bg);color:var(--tx);font-family:var(--f-body);font-size:14
 /* Tabs and sections stay hidden until sign-in decides what this person may see. */
 body:not([data-access="ok"]) .tabs,body:not([data-access="ok"]) main>section{display:none!important}
 #users-body input[type=checkbox]{width:18px;height:18px;accent-color:var(--p)}
+.login{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:var(--bg);padding:16px}
+.login-card{width:min(400px,100%);background:var(--card);border:1px solid var(--bdr);border-top:3px solid var(--p);border-radius:var(--r);padding:28px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
+.login-card h1{font-size:24px}.login-card h1 span{color:var(--p)}
+button.chip{background:none;cursor:pointer;font:inherit;font-size:12px}
+button.chip:hover{color:var(--hdr-tx);border-color:var(--p)}
 h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;font-weight:700}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -82,7 +87,7 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;
 .btn.danger{color:var(--bad);border-color:var(--bad)}
 .btn.small{padding:4px 10px;font-size:12.5px}
 .btn:disabled{opacity:.55;cursor:not-allowed}
-input[type=text],input[type=search],input[type=date],select,textarea{background:var(--card);border:1px solid var(--bdr2);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input[type=text],input[type=search],input[type=date],input[type=password],select,textarea{background:var(--card);border:1px solid var(--bdr2);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
 textarea{resize:vertical;min-height:70px}
 input:focus,select:focus,textarea:focus{border-color:var(--focus);outline:none;box-shadow:0 0 0 3px rgba(247,148,29,.25)}
 label.lbl{display:block;font-weight:600;font-size:13px;margin-bottom:5px}
@@ -154,10 +159,19 @@ td.r,th.r{text-align:right}
 @media (max-width:640px){.issue{grid-template-columns:1fr}.indent{padding-left:0}.lookup{grid-template-columns:1fr}.hdr{position:relative;top:auto}.tabs{flex-wrap:wrap}}
 @media (prefers-reduced-motion:no-preference){.btn,.tabs button{transition:background .15s,border-color .15s,color .15s}}
 </style>
-<script src="vendor/msal-browser-2.38.3.min.js"></script>
 <script src="config.js"></script>
 </head>
 <body>
+<div id="login" class="login" hidden>
+  <form id="login-form" class="login-card" autocomplete="on" novalidate>
+    <h1>DreamFolks <span>Call Audit</span></h1>
+    <p class="muted" style="margin:0">Sign in with the login ID and password your admin gave you.</p>
+    <div><label class="lbl" for="login-id">Login ID</label><input type="text" id="login-id" autocomplete="username" placeholder="e.g. name@dreamfolks.com"></div>
+    <div><label class="lbl" for="login-pass">Password</label><input type="password" id="login-pass" autocomplete="current-password"></div>
+    <div class="banner bad" id="login-err" role="alert" hidden></div>
+    <button class="btn primary" type="submit" id="login-btn">Sign in</button>
+  </form>
+</div>
 
 <header class="hdr">
   <div class="hdr-in">
@@ -167,9 +181,10 @@ td.r,th.r{text-align:right}
         <p id="pool-line">Loading the audit pool…</p>
       </div>
       <div class="chips">
-        <span class="chip" id="chip-me">Signing in…</span>
+        <span class="chip" id="chip-me">Not signed in</span>
         <span class="chip num" id="chip-count"><b>0</b> audits</span>
         <span class="chip" id="chip-status">Connecting…</span>
+        <button class="chip" id="btn-signout" type="button" hidden>Sign out</button>
       </div>
     </div>
     <nav class="tabs" role="tablist" aria-label="Sections">
@@ -252,11 +267,7 @@ td.r,th.r{text-align:right}
   <!-- SETTINGS -->
   <section id="view-settings" class="stack" hidden>
     <div class="card stack">
-      <div><h2>SharePoint setup</h2><p class="sub" id="setup-sub">Checking the SharePoint site…</p></div>
-      <div class="row"><button class="btn primary" id="btn-setup" hidden>Create the SharePoint lists</button><span class="muted" id="setup-msg" role="status"></span></div>
-    </div>
-    <div class="card stack">
-      <div><h2>Lead pool</h2><p class="sub">The leads auditors can look up. Upload the masked <b>leads.json</b> made by the build script (it holds no readable phone numbers or Lead IDs). It is saved to the SharePoint site's Documents library and replaces the current pool for everyone. Saved audits are not changed.</p></div>
+      <div><h2>Lead pool</h2><p class="sub">The leads auditors can look up. Upload the masked <b>leads.json</b> made by the build script (it holds no readable phone numbers or Lead IDs). It is saved on the audit server and replaces the current pool for everyone. Saved audits are not changed.</p></div>
       <p class="num" id="pool-status" style="margin:0"></p>
       <div class="row"><label class="btn primary" for="pool-file" style="display:inline-block">Upload leads.json</label>
         <input type="file" id="pool-file" accept=".json,application/json" hidden>
@@ -273,21 +284,26 @@ td.r,th.r{text-align:right}
   <!-- USERS -->
   <section id="view-users" class="stack" hidden>
     <div class="card stack">
-      <div><h2>Users and tab access</h2><p class="sub">Only people listed here can open the tool. Tick the tabs each person sees. Admins see every tab, including Settings and Users, and can edit, delete and download audits. A change applies the next time that person opens or reloads the tool.</p></div>
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div style="min-width:0;flex:1 1 320px"><h2>Users and tab access</h2><p class="sub">Same process as the Sales Dashboard. Make changes here, click <b>Save users file</b>, then put the downloaded <b>users.json</b> in the Call Audit repository and push. Changes apply once it's deployed. Passwords are saved scrambled, so they can't be read back. Set a new one if someone forgets theirs.</p></div>
+        <button class="btn primary" id="u-save" type="button">Save users file</button>
+      </div>
+      <div id="u-dirty" class="banner warn" hidden>You have unsaved changes. Click <b>Save users file</b>, then commit users.json and push to deploy them.</div>
       <form id="user-add" class="filters" autocomplete="off" novalidate>
-        <div><label class="lbl" for="u-email">Work email</label><input type="text" id="u-email" placeholder="name@dreamfolks.com"></div>
-        <div><label class="lbl" for="u-name">Name</label><input type="text" id="u-name" placeholder="Full name"></div>
+        <div><label class="lbl" for="u-email">Login ID</label><input type="text" id="u-email" placeholder="name@dreamfolks.com" autocomplete="off"></div>
+        <div><label class="lbl" for="u-name">Name</label><input type="text" id="u-name" placeholder="Full name" autocomplete="off"></div>
+        <div><label class="lbl" for="u-pass">Password</label><input type="password" id="u-pass" placeholder="At least 8 characters" autocomplete="new-password"></div>
         <div><label class="lbl" for="u-role">Starting access</label>
           <select id="u-role">
             <option value="Auditor">Auditor: New Audit, All Audits, Auditors, Coverage</option>
             <option value="Viewer">Viewer: All Audits, Auditors, Coverage</option>
             <option value="Admin">Admin: every tab</option>
           </select></div>
-        <div style="align-self:end"><button class="btn primary" type="submit" id="u-add">Add user</button></div>
+        <div style="align-self:end"><button class="btn" type="submit" id="u-add">Add user</button></div>
       </form>
       <span class="muted" id="u-msg" role="status"></span>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Name</th><th>Email</th><th>New Audit</th><th>All Audits</th><th>Auditors</th><th>Coverage</th><th>Admin</th><th>Active</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Login ID</th><th>New Audit</th><th>All Audits</th><th>Auditors</th><th>Coverage</th><th>Admin</th><th>Active</th><th>Password</th><th></th></tr></thead>
         <tbody id="users-body"></tbody>
       </table></div>
     </div>
@@ -304,12 +320,11 @@ const BAND_ORDER = ["Up to 1 min", "1-5 min", "Over 5 min"];
 const NO_ISSUE = "No issue found";
 
 const S = {
-  sp: null,                // { siteId, audits, settings } once connected
   me: { id: null, isOwner: false, name: "", email: "" },
-  settingsItems: {},       // key -> SharePoint item id in the settings list
+  users: null, usersDirty: false,   // users.json being edited on the Users tab (admins)
   pool: [], byHash: new Map(), byLidHash: new Map(), mask: null, dicts: null, built: "",
   cfg: { taxonomy: undefined, services: undefined },
-  audits: new Map(),       // SharePoint item id -> {key, uid, phone, d}
+  audits: new Map(),       // audit id -> {key, uid, phone, d}
   auditors: new Set(),
   names: {},
   tab: "new", lead: null, editing: null, selAuditor: null, openKey: null,
@@ -344,7 +359,7 @@ function setTab(t) {
 }
 
 /* ---------- leads ---------- */
-/* The lead pool is leads.json in the SharePoint site's Documents library, uploaded by an owner. */
+/* The lead pool is the masked leads.json, uploaded by an admin and kept by the audit server. */
 function setPool(meta, rows) {
   const F = meta.fields, D = meta.dicts;
   S.pool = []; S.byHash = new Map(); S.byLidHash = new Map();
@@ -359,21 +374,20 @@ function setPool(meta, rows) {
   $("#pool-line").textContent = `${fmtN(S.pool.length)} leads in the audit pool · lead data as of ${S.built}`;
 }
 async function loadPool() {
-  let item;
-  try { item = await gx(`/sites/${S.sp.siteId}/drive/root:/${encodeURIComponent(CFG.poolFolder)}/leads.json`); }
-  catch (e) { if (e.status !== 404) throw e; item = null; }
-  if (!item) {
+  const headers = { Authorization: "Bearer " + TOKEN };
+  if (S.poolTag) headers["If-None-Match"] = S.poolTag;
+  const res = await fetch(API + "/pool", { headers });
+  if (res.status === 304) return;
+  if (res.status === 404) {
     S.poolState = "empty";
-    $("#pool-line").textContent = S.me.isOwner ? "No lead pool yet. Upload leads.json in Settings." : "The lead pool hasn't been loaded yet. An owner adds it in Settings.";
+    $("#pool-line").textContent = S.me.isOwner ? "No lead pool yet. Upload leads.json in Settings." : "The lead pool hasn't been loaded yet. An admin adds it in Settings.";
     render(); return;
   }
-  if (item.eTag && item.eTag === S.poolTag) return;
+  if (!res.ok) throw new Error("lead pool " + res.status);
   S.poolState = "loading";
-  const res = await fetch(item["@microsoft.graph.downloadUrl"]);
-  if (!res.ok) throw new Error("leads.json download " + res.status);
   const j = await res.json();
   setPool(j, j.rows);
-  S.poolTag = item.eTag; S.poolState = "ready"; render();
+  S.poolTag = res.headers.get("ETag"); S.poolState = "ready"; render();
 }
 /* The lead pool holds no phone numbers or Lead IDs in readable form.
    ph/lh are PBKDF2 hashes; le is the Lead ID XORed with a PBKDF2 key derived from the phone. */
@@ -404,286 +418,197 @@ function leadSnapshot(L) {
   };
 }
 
-/* ---------- Microsoft 365: sign-in and Graph ---------- */
+/* ---------- audit server (/api) ---------- */
 const CFG = window.AUDIT_CONFIG || {};
-const GRAPH = "https://graph.microsoft.com/v1.0";
-const SCOPES = ["User.Read", "Sites.ReadWrite.All"];
-let msalApp = null;
-async function signIn() {
-  msalApp = new msal.PublicClientApplication({
-    auth: { clientId: CFG.clientId, authority: `https://login.microsoftonline.com/${CFG.tenantId}`, redirectUri: location.origin + location.pathname.replace(/index\.html$/, "") },
-    cache: { cacheLocation: "localStorage" },
-  });
-  if (msalApp.initialize) await msalApp.initialize();
-  const res = await msalApp.handleRedirectPromise();
-  const account = res?.account || msalApp.getAllAccounts()[0];
-  if (!account) { $("#chip-me").textContent = "Signing in…"; await msalApp.loginRedirect({ scopes: SCOPES }); return null; }
-  msalApp.setActiveAccount(account);
-  return account;
-}
-async function token() {
-  try {
-    return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account: msalApp.getActiveAccount() })).accessToken;
-  } catch (e) {
-    if (e instanceof msal.InteractionRequiredAuthError) await msalApp.acquireTokenRedirect({ scopes: SCOPES });
-    throw e;
-  }
-}
-/* One Graph call. Retries once on throttling; errors carry .status and .code. */
-async function gx(path, opts = {}, retried = false) {
-  const url = path.startsWith("http") ? path : GRAPH + path;
-  const headers = { Authorization: "Bearer " + await token(), ...(opts.headers || {}) };
-  if (typeof opts.body === "string") headers["Content-Type"] = "application/json";
-  const res = await fetch(url, { ...opts, headers });
-  if ((res.status === 429 || res.status === 503) && !retried) {
-    await new Promise(r => setTimeout(r, 1000 * (+res.headers.get("Retry-After") || 3)));
-    return gx(path, opts, true);
-  }
-  if (res.status === 204) return null;
+const API = CFG.apiBase || "/api";
+let TOKEN = null;
+try { TOKEN = sessionStorage.getItem("dfca-token"); } catch (e) {}
+/* One call to the audit server. Errors carry .status; a 401 sends the person back to the login screen. */
+async function api(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (TOKEN) headers.Authorization = "Bearer " + TOKEN;
+  let body = opts.body;
+  if (body !== undefined && !(body instanceof Blob) && typeof body !== "string") { body = JSON.stringify(body); headers["Content-Type"] = "application/json"; }
+  let res;
+  try { res = await fetch(API + path, { method: opts.method || "GET", headers, body }); }
+  catch (e) { const err = new Error("Couldn't reach the audit server. Check your connection and try again."); err.status = 0; throw err; }
   const isJson = (res.headers.get("content-type") || "").includes("json");
-  const body = isJson ? await res.json() : await res.text();
+  const data = isJson ? await res.json().catch(() => ({})) : await res.text();
+  if (res.status === 401 && path !== "/login") signOut("Your session has ended. Sign in again.");
   if (!res.ok) {
-    const err = new Error(body?.error?.message || `${res.status} ${res.statusText}`);
-    err.status = res.status; err.code = body?.error?.code || "";
-    throw err;
+    const err = new Error(data?.error || (res.status === 502 || res.status === 504 ? "The audit service isn't running on the server. Ask IT to restart it." : `${res.status} ${res.statusText}`));
+    err.status = res.status; throw err;
   }
-  return body;
-}
-async function listAll(path) {
-  const out = [];
-  let url = path;
-  while (url) { const r = await gx(url); out.push(...r.value); url = r["@odata.nextLink"]; }
-  return out;
+  return data;
 }
 
-/* ---------- SharePoint lists ---------- */
-const AUDIT_COLUMNS = [
-  { name: "Phone", text: {}, indexed: true, enforceUniqueValues: true },
-  { name: "LeadId", text: {} }, { name: "Agent", text: {} }, { name: "AgentHeard", text: {} },
-  { name: "Category", text: {} }, { name: "TalkBand", text: {} }, { name: "Source", text: {} },
-  { name: "City", text: {} }, { name: "Campaign", text: {} }, { name: "Interested", text: {} },
-  { name: "WhyNoSale", text: { allowMultipleLines: true } },
-  { name: "SubmittedAt", dateTime: {} },
-  { name: "RecordJson", text: { allowMultipleLines: true } },
-];
-async function findLists() {
-  const lists = await listAll(`/sites/${S.sp.siteId}/lists?$select=id,displayName&$top=200`);
-  S.sp.audits = lists.find(l => l.displayName === CFG.auditsList)?.id || null;
-  S.sp.settings = lists.find(l => l.displayName === CFG.settingsList)?.id || null;
-  S.sp.users = lists.find(l => l.displayName === (CFG.usersList || "Call Audit Users"))?.id || null;
+/* ---------- sign in ---------- */
+function showLogin(msg) {
+  document.body.dataset.access = "login";
+  $("#login").hidden = false; $("#btn-signout").hidden = true;
+  const e = $("#login-err"); e.textContent = msg || ""; e.hidden = !msg;
+  $("#chip-me").textContent = "Not signed in";
+  setTimeout(() => $("#login-id").focus(), 0);
 }
-const listsReady = () => !!(S.sp?.audits && S.sp?.settings && S.sp?.users);
-async function createLists() {
-  const base = `/sites/${S.sp.siteId}/lists`;
-  if (!S.sp.audits) {
-    const l = await gx(base, { method: "POST", body: JSON.stringify({ displayName: CFG.auditsList, list: { template: "genericList" }, columns: AUDIT_COLUMNS }) });
-    S.sp.audits = l.id;
-  }
-  if (!S.sp.settings) {
-    const l = await gx(base, { method: "POST", body: JSON.stringify({ displayName: CFG.settingsList, list: { template: "genericList" }, columns: [{ name: "Value", text: { allowMultipleLines: true } }] }) });
-    S.sp.settings = l.id;
-  }
-  if (!S.sp.users) {
-    const l = await gx(base, { method: "POST", body: JSON.stringify({ displayName: CFG.usersList || "Call Audit Users", list: { template: "genericList" }, columns: USER_COLUMNS }) });
-    S.sp.users = l.id;
-    S.users = new Map();
-    for (const email of (CFG.owners || []).map(o => o.toLowerCase())) {
-      await saveUser({ email, name: email === S.me.email ? S.me.name : "", tabs: [...ROLE_TABS.Admin], admin: true, active: true });
-    }
-  }
-  await loadSettings();
-  if (!S.cfg.taxonomy) await saveSetting("taxonomy", { sections: DEFAULT_TAXONOMY });
-  if (!S.cfg.services) await saveSetting("services", { services: DEFAULT_SERVICES });
+function signOut(msg) {
+  TOKEN = null; try { sessionStorage.removeItem("dfca-token"); } catch (e) {}
+  clearInterval(S.poll); S.audits = new Map(); S.users = null; S.allowed = null;
+  showLogin(msg);
 }
-
-/* ---------- users and tab access ---------- */
-/* "Call Audit Users" list: one item per person. The page shows only the tabs a person is given.
-   SharePoint permissions (IT-SETUP.md) are what actually stop someone changing data. */
-const WORK_TABS = [["new", "New Audit"], ["all", "All Audits"], ["auditors", "Auditors"], ["coverage", "Coverage"]];
-const ADMIN_TABS = ["settings", "users"];
-const ROLE_TABS = { Auditor: ["new", "all", "auditors", "coverage"], Viewer: ["all", "auditors", "coverage"], Admin: ["new", "all", "auditors", "coverage"] };
-const USER_COLUMNS = [
-  { name: "Email", text: {}, indexed: true, enforceUniqueValues: true },
-  { name: "DisplayName", text: {} }, { name: "Tabs", text: {} },
-  { name: "IsAdmin", boolean: {} }, { name: "Active", boolean: {} },
-];
-const isConfigOwner = email => (CFG.owners || []).map(o => o.toLowerCase()).includes(email);
-async function loadUsers() {
-  const items = await listAll(`/sites/${S.sp.siteId}/lists/${S.sp.users}/items?$expand=fields($select=Email,DisplayName,Tabs,IsAdmin,Active)&$top=999`);
-  S.users = new Map();
-  for (const it of items) {
-    const f = it.fields, email = String(f.Email || "").trim().toLowerCase();
-    if (!email) continue;
-    S.users.set(email, { id: it.id, email, name: f.DisplayName || "", tabs: String(f.Tabs || "").split(",").map(x => x.trim()).filter(Boolean), admin: !!f.IsAdmin, active: f.Active !== false });
-  }
-}
-async function saveUser(u) {
-  const fields = { Title: u.email, Email: u.email, DisplayName: u.name || "", Tabs: u.tabs.join(","), IsAdmin: !!u.admin, Active: !!u.active };
-  const base = `/sites/${S.sp.siteId}/lists/${S.sp.users}/items`;
-  if (u.id) await gx(`${base}/${u.id}/fields`, { method: "PATCH", body: JSON.stringify(fields) });
-  else u.id = (await gx(base, { method: "POST", body: JSON.stringify({ fields }) })).id;
-  S.users.set(u.email, u);
-}
-/* Decide what this person sees. Returns false when they have no access at all. */
-function applyAccess() {
-  const u = S.users?.get(S.me.email), active = !!(u && u.active);
-  S.me.isOwner = isConfigOwner(S.me.email) || (active && u.admin);
-  const tabs = S.me.isOwner ? [...ROLE_TABS.Admin, ...ADMIN_TABS] : active ? WORK_TABS.map(t => t[0]).filter(t => u.tabs.includes(t)) : [];
-  S.allowed = new Set(tabs);
-  document.querySelectorAll(".tabs button").forEach(b => b.hidden = !S.allowed.has(b.dataset.tab));
-  $("#btn-export").hidden = !S.me.isOwner;
-  $("#chip-me").innerHTML = `<b>${esc(S.me.name || "You")}</b>${S.me.isOwner ? " · admin" : ""}`;
-  document.body.dataset.access = tabs.length ? "ok" : "none";
-  if (!tabs.length) {
-    showGlobal(u && !u.active ? `Your access to the Call Audit tool is switched off (${S.me.email}). Ask an admin if you need it back.`
-      : `You don't have access to the Call Audit tool yet. Ask an admin to add ${S.me.email} on the Users tab.`);
-    return false;
-  }
-  setTab(S.tab);
-  return true;
-}
-function renderUsers() {
-  if (!S.me.isOwner || !S.users) return;
-  const users = [...S.users.values()].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
-  const box = (u, f, on, off, label) => `<input type="checkbox" data-u="${esc(u.email)}" data-f="${f}" ${on ? "checked" : ""} ${off ? "disabled" : ""} aria-label="${esc(label)} for ${esc(u.email)}">`;
-  $("#users-body").innerHTML = users.length ? users.map(u => {
-    const self = u.email === S.me.email, pinned = isConfigOwner(u.email);
-    return `<tr>
-      <td>${esc(u.name || "—")}${pinned ? ` <span class="pill" title="Listed as an owner in config.js">owner</span>` : ""}</td><td>${esc(u.email)}</td>
-      ${WORK_TABS.map(([k, label]) => `<td>${box(u, "tab:" + k, u.admin || u.tabs.includes(k), u.admin, label)}</td>`).join("")}
-      <td>${box(u, "admin", u.admin, self || pinned, "Admin")}</td><td>${box(u, "active", u.active, self || pinned, "Active")}</td>
-      <td data-rm="${esc(u.email)}">${self || pinned ? "" : `<button class="btn small danger" type="button" data-remove="${esc(u.email)}">Remove</button>`}</td></tr>`;
-  }).join("") : `<tr><td colspan="9"><div class="empty"><b>No users yet</b>Add the first person above.</div></td></tr>`;
-}
-$("#users-body").addEventListener("change", async e => {
-  const el = e.target; if (!el.dataset.u || !S.me.isOwner) return;
-  const u = S.users.get(el.dataset.u); if (!u) return;
-  const before = structuredClone(u), f = el.dataset.f;
-  if (f === "admin") u.admin = el.checked;
-  else if (f === "active") u.active = el.checked;
-  else { const k = f.slice(4); u.tabs = el.checked ? [...new Set([...u.tabs, k])] : u.tabs.filter(t => t !== k); }
-  try { await saveUser(u); toast(`Saved access for ${u.name || u.email}.`); }
-  catch (err) { S.users.set(u.email, before); toast("That change wasn't saved: " + err.message); }
-  renderUsers();
-});
-$("#users-body").addEventListener("click", async e => {
-  const rm = e.target.closest("[data-remove]"), yes = e.target.closest("[data-yes-rm]"), no = e.target.closest("[data-no-rm]");
-  if (rm) { rm.parentElement.innerHTML = `<span class="row" style="gap:6px;flex-wrap:nowrap">Remove? <button class="btn small danger" type="button" data-yes-rm="${esc(rm.dataset.remove)}">Remove</button><button class="btn small" type="button" data-no-rm>Keep</button></span>`; return; }
-  if (no) { renderUsers(); return; }
-  if (yes) {
-    const u = S.users.get(yes.dataset.yesRm); if (!u || !S.me.isOwner) return;
-    try { await gx(`/sites/${S.sp.siteId}/lists/${S.sp.users}/items/${u.id}`, { method: "DELETE" }); S.users.delete(u.email); toast(`Removed ${u.name || u.email}.`); }
-    catch (err) { toast("Couldn't remove: " + err.message); }
-    renderUsers();
-  }
-});
-$("#user-add").addEventListener("submit", async e => {
+$("#login-form").addEventListener("submit", async e => {
   e.preventDefault();
-  if (!S.me.isOwner) return;
-  const email = $("#u-email").value.trim().toLowerCase(), name = $("#u-name").value.trim(), role = $("#u-role").value, msg = $("#u-msg");
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Enter a valid work email address."; return; }
-  if (S.users.has(email)) { msg.textContent = `${email} is already on the list. Change their tabs in the table.`; return; }
-  $("#u-add").disabled = true; msg.textContent = "Adding…";
+  const loginId = $("#login-id").value.trim(), password = $("#login-pass").value, err = $("#login-err"), btn = $("#login-btn");
+  if (!loginId || !password) { err.textContent = "Enter your login ID and password."; err.hidden = false; return; }
+  btn.disabled = true; err.hidden = true;
   try {
-    await saveUser({ email, name, tabs: [...ROLE_TABS[role]], admin: role === "Admin", active: true });
-    $("#u-email").value = ""; $("#u-name").value = ""; msg.textContent = `Added ${name || email} as ${role}.`;
-  } catch (err) { msg.textContent = "Couldn't add the user: " + err.message; }
-  finally { $("#u-add").disabled = false; renderUsers(); }
+    const r = await api("/login", { method: "POST", body: { loginId, password } });
+    TOKEN = r.token; try { sessionStorage.setItem("dfca-token", TOKEN); } catch (x) {}
+    $("#login-pass").value = ""; $("#login").hidden = true;
+    await start(r.user);
+  } catch (x) { err.textContent = x.message; err.hidden = false; }
+  finally { btn.disabled = false; }
 });
+$("#btn-signout").addEventListener("click", () => signOut("You've signed out."));
 
-/* Settings list: one item per key (Title), JSON in Value. */
-async function loadSettings() {
-  const items = await listAll(`/sites/${S.sp.siteId}/lists/${S.sp.settings}/items?$expand=fields($select=Title,Value)&$top=200`);
-  const got = {};
-  for (const it of items) { S.settingsItems[it.fields.Title] = it.id; try { got[it.fields.Title] = JSON.parse(it.fields.Value); } catch (e) {} }
-  S.cfg.taxonomy = got.taxonomy || null;
-  S.cfg.services = got.services || null;
-  onCfg();
-}
-async function saveSetting(key, value) {
-  const body = { ...value, updatedAt: new Date().toISOString() };
-  const base = `/sites/${S.sp.siteId}/lists/${S.sp.settings}/items`;
-  if (S.settingsItems[key]) await gx(`${base}/${S.settingsItems[key]}/fields`, { method: "PATCH", body: JSON.stringify({ Value: JSON.stringify(body) }) });
-  else S.settingsItems[key] = (await gx(base, { method: "POST", body: JSON.stringify({ fields: { Title: key, Value: JSON.stringify(body) } }) })).id;
-  S.cfg[key] = body;
-}
-
-/* Audits list: one item per lead. Phone is a unique column, so SharePoint itself refuses a second audit. */
-function auditFields(rec) {
-  const L = rec.lead || {}, A = rec.answers || {};
-  return {
-    Title: rec.phone, Phone: rec.phone, LeadId: L.leadId || "", Agent: L.agent || "", AgentHeard: rec.agentAudited || "",
-    Category: L.category || "", TalkBand: L.talkBand || "", Source: L.source || "", City: L.city || "", Campaign: L.campaign || "",
-    Interested: A.q1 || "", WhyNoSale: A.q12 || "", SubmittedAt: rec.submittedAt, RecordJson: JSON.stringify(rec),
-  };
-}
-async function loadAudits() {
-  const items = await listAll(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items?$expand=fields($select=Phone,RecordJson)&$select=id,createdBy&$top=999`);
-  const audits = new Map(), names = {};
-  for (const it of items) {
-    let d; try { d = JSON.parse(it.fields.RecordJson || "{}"); } catch (e) { continue; }
-    const who = it.createdBy?.user || {};
-    const uid = who.id || who.email || d.auditorId || "unknown";
-    if (who.displayName) names[uid] = { name: who.displayName };
-    audits.set(it.id, { key: it.id, uid, phone: it.fields.Phone || d.phone, d });
-  }
-  S.audits = audits; S.names = names; S.auditors = new Set([...audits.values()].map(a => a.uid));
-  S.dbState = "live"; render();
-}
-
-async function connect() {
-  const me = await gx("/me?$select=id,displayName,mail,userPrincipalName");
-  const email = (me.mail || me.userPrincipalName || "").toLowerCase();
-  S.me = { id: me.id, name: me.displayName, email, isOwner: isConfigOwner(email) };
-  $("#chip-me").innerHTML = `<b>${esc(me.displayName || "You")}</b>`;
-  const site = await gx(`/sites/${CFG.siteHost}:${CFG.sitePath}`);
-  S.sp = { siteId: site.id, audits: null, settings: null, users: null };
-  await findLists();
-  if (!listsReady()) {
-    S.dbState = "off";
-    if (S.me.isOwner) {
-      // Only the setup card is useful until the lists exist.
-      S.allowed = new Set(["settings"]);
-      document.querySelectorAll(".tabs button").forEach(b => b.hidden = b.dataset.tab !== "settings");
-      document.body.dataset.access = "ok"; setTab("settings"); renderSetup();
-      showGlobal("Some SharePoint lists don't exist yet. In Settings, choose Create the SharePoint lists.");
-    } else {
-      document.body.dataset.access = "none";
-      showGlobal("The Call Audit tool isn't set up yet. Ask an admin to finish the SharePoint setup.");
-    }
-    render(); return;
-  }
-  await loadUsers();
-  if (!applyAccess()) { S.dbState = "off"; render(); return; }
-  renderSetup();
-  await Promise.all([loadSettings(), loadAudits(), loadPool().catch(e => showGlobal("The lead pool didn't load: " + e.message))]);
-  setInterval(() => { if (!document.hidden) loadAudits().catch(dbErr); }, 60000);
+async function start(user) {
+  S.me = { id: user.loginId, name: user.name, email: user.loginId, isOwner: !!user.admin };
+  applyAccess(user);
+  S.dbState = "connecting"; render();
+  try {
+    await Promise.all([loadSettings(), loadAudits(), loadPool().catch(e => showGlobal("The lead pool didn't load: " + e.message))]);
+  } catch (e) { dbErr(e); return; }
+  clearInterval(S.poll);
+  S.poll = setInterval(() => { if (!document.hidden && TOKEN) loadAudits().catch(dbErr); }, 60000);
 }
 function dbErr(e) {
+  if (e?.status === 401) return;
   S.dbState = "error";
-  showGlobal(e?.status === 403 ? "SharePoint refused access. Ask an owner to check your permissions on the Call Audit site." : "SharePoint stopped responding. Reload the page to reconnect.");
+  showGlobal(e?.message || "The audit server stopped responding. Reload the page.");
   render();
 }
 function showGlobal(msg) { const b = $("#global-banner"); b.textContent = msg; b.hidden = false; }
-function renderSetup() {
-  if (!S.me.isOwner) return;
-  const ready = listsReady();
-  const names = `"${CFG.auditsList}", "${CFG.settingsList}" and "${CFG.usersList || "Call Audit Users"}"`;
-  $("#setup-sub").textContent = ready
-    ? `Connected to ${CFG.siteHost}${CFG.sitePath}. The ${names} lists are in place.`
-    : `The site ${CFG.siteHost}${CFG.sitePath} is missing some of the ${names} lists. Create them here, then set permissions as described in IT-SETUP.md.`;
-  $("#btn-setup").hidden = !!ready;
+
+/* ---------- tabs a person may see ---------- */
+const WORK_TABS = [["new", "New Audit"], ["all", "All Audits"], ["auditors", "Auditors"], ["coverage", "Coverage"]];
+const ROLE_TABS = { Auditor: ["new", "all", "auditors", "coverage"], Viewer: ["all", "auditors", "coverage"], Admin: ["new", "all", "auditors", "coverage"] };
+function applyAccess(user) {
+  const tabs = user.admin ? [...ROLE_TABS.Admin, "settings", "users"] : WORK_TABS.map(t => t[0]).filter(t => (user.tabs || []).includes(t));
+  S.allowed = new Set(tabs);
+  document.querySelectorAll(".tabs button").forEach(b => b.hidden = !S.allowed.has(b.dataset.tab));
+  $("#btn-export").hidden = !user.admin;
+  $("#btn-signout").hidden = false;
+  $("#chip-me").innerHTML = `<b>${esc(user.name || user.loginId)}</b>${user.admin ? " · admin" : ""}`;
+  $("#global-banner").hidden = true;
+  document.body.dataset.access = "ok";
+  setTab(S.tab);
 }
-$("#btn-setup").addEventListener("click", async () => {
-  const btn = $("#btn-setup"), msg = $("#setup-msg"); btn.disabled = true; msg.textContent = "Creating lists…";
+
+/* ---------- settings and audits ---------- */
+async function loadSettings() {
+  const st = await api("/settings");
+  S.cfg.taxonomy = st.taxonomy || null;
+  S.cfg.services = st.services || null;
+  if (S.me.isOwner && !S.cfg.taxonomy) await saveSetting("taxonomy", { sections: DEFAULT_TAXONOMY });
+  if (S.me.isOwner && !S.cfg.services) await saveSetting("services", { services: DEFAULT_SERVICES });
+  onCfg();
+}
+async function saveSetting(key, value) {
+  S.cfg[key] = await api("/settings/" + key, { method: "PUT", body: value });
+}
+async function loadAudits() {
+  const { audits } = await api("/audits");
+  const m = new Map(), names = {};
+  for (const a of audits) {
+    const key = String(a.id), prev = S.audits.get(key);
+    // keep the same object when nothing changed, so an open audit panel isn't redrawn
+    const d = prev && JSON.stringify(prev.d) === JSON.stringify(a.record) ? prev.d : a.record;
+    names[a.auditorLogin] = { name: a.auditorName || a.auditorLogin };
+    m.set(key, { key, uid: a.auditorLogin, phone: a.phone, d });
+  }
+  S.audits = m; S.names = names; S.auditors = new Set([...m.values()].map(a => a.uid));
+  S.dbState = "live"; render();
+}
+
+/* ---------- Users tab: edit users.json, then save it for git ---------- */
+const b64 = u8 => btoa(String.fromCharCode(...u8));
+async function hashPassword(pw) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const k = await crypto.subtle.importKey("raw", te.encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: 200000 }, k, 256);
+  return `pbkdf2_sha256$200000$${b64(salt)}$${b64(new Uint8Array(bits))}`;
+}
+async function loadUsersFile() {
+  S.usersLoading = true;
   try {
-    await createLists();
-    msg.textContent = "Lists created."; $("#global-banner").hidden = true;
-    await loadUsers(); applyAccess(); renderSetup();
-    await Promise.all([loadSettings(), loadAudits(), loadPool()]);
-    setInterval(() => { if (!document.hidden) loadAudits().catch(dbErr); }, 60000);
-  } catch (e) { msg.textContent = "Couldn't create the lists: " + e.message; }
-  finally { btn.disabled = false; }
+    const f = await api("/users");
+    S.users = new Map((f.users || []).map(u => [String(u.loginId).toLowerCase(), { ...u, loginId: String(u.loginId).toLowerCase(), tabs: u.tabs || [], active: u.active !== false, admin: !!u.admin }]));
+    S.usersDirty = false;
+  } catch (e) { $("#u-msg").textContent = "Couldn't load users: " + e.message; }
+  finally { S.usersLoading = false; renderUsers(); }
+}
+function markDirty() { S.usersDirty = true; $("#u-dirty").hidden = false; }
+function renderUsers() {
+  if (!S.me.isOwner) return;
+  if (!S.users) { if (!S.usersLoading) loadUsersFile(); return; }
+  $("#u-dirty").hidden = !S.usersDirty;
+  const users = [...S.users.values()].sort((a, b) => (a.name || a.loginId).localeCompare(b.name || b.loginId));
+  const box = (u, f, on, off, label) => `<input type="checkbox" data-u="${esc(u.loginId)}" data-f="${f}" ${on ? "checked" : ""} ${off ? "disabled" : ""} aria-label="${esc(label)} for ${esc(u.loginId)}">`;
+  $("#users-body").innerHTML = users.length ? users.map(u => {
+    const self = u.loginId === S.me.id;
+    return `<tr>
+      <td>${esc(u.name || "—")}</td><td>${esc(u.loginId)}</td>
+      ${WORK_TABS.map(([k, label]) => `<td>${box(u, "tab:" + k, u.admin || u.tabs.includes(k), u.admin, label)}</td>`).join("")}
+      <td>${box(u, "admin", u.admin, self, "Admin")}</td><td>${box(u, "active", u.active, self, "Active")}</td>
+      <td data-pw="${esc(u.loginId)}"><button class="btn small" type="button" data-setpw="${esc(u.loginId)}">${u.password ? "Change" : "Set"}</button></td>
+      <td>${self ? "" : `<button class="btn small danger" type="button" data-remove="${esc(u.loginId)}">Remove</button>`}</td></tr>`;
+  }).join("") : `<tr><td colspan="10"><div class="empty"><b>No users yet</b>Add the first person above.</div></td></tr>`;
+}
+$("#users-body").addEventListener("change", e => {
+  const el = e.target; if (!el.dataset.u || !S.me.isOwner) return;
+  const u = S.users.get(el.dataset.u); if (!u) return;
+  const f = el.dataset.f;
+  if (f === "admin") u.admin = el.checked;
+  else if (f === "active") u.active = el.checked;
+  else { const k = f.slice(4); u.tabs = el.checked ? [...new Set([...u.tabs, k])] : u.tabs.filter(t => t !== k); }
+  markDirty(); renderUsers();
+});
+$("#users-body").addEventListener("click", async e => {
+  const t = e.target;
+  if (t.dataset.setpw) {
+    t.parentElement.innerHTML = `<span class="row" style="gap:6px;flex-wrap:nowrap"><input type="password" data-pwin="${esc(t.dataset.setpw)}" placeholder="New password" autocomplete="new-password" style="width:150px"><button class="btn small" type="button" data-pwok="${esc(t.dataset.setpw)}">OK</button><button class="btn small" type="button" data-pwno>Cancel</button></span>`;
+    t.parentElement?.querySelector?.("input")?.focus(); return;
+  }
+  if (t.dataset.pwok) {
+    const inp = $(`#users-body input[data-pwin="${CSS.escape(t.dataset.pwok)}"]`), u = S.users.get(t.dataset.pwok);
+    if (!inp || inp.value.length < 8) { toast("Passwords need at least 8 characters."); return; }
+    u.password = await hashPassword(inp.value); markDirty(); renderUsers(); toast(`New password set for ${u.name || u.loginId}. Save the users file to apply it.`); return;
+  }
+  if ("pwno" in t.dataset || "noRm" in t.dataset) { renderUsers(); return; }
+  if (t.dataset.remove) { t.parentElement.innerHTML = `<span class="row" style="gap:6px;flex-wrap:nowrap">Remove? <button class="btn small danger" type="button" data-yes-rm="${esc(t.dataset.remove)}">Remove</button><button class="btn small" type="button" data-no-rm>Keep</button></span>`; return; }
+  if (t.dataset.yesRm) { S.users.delete(t.dataset.yesRm); markDirty(); renderUsers(); }
+});
+$("#user-add").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!S.me.isOwner || !S.users) return;
+  const loginId = $("#u-email").value.trim().toLowerCase(), name = $("#u-name").value.trim(), pw = $("#u-pass").value, role = $("#u-role").value, msg = $("#u-msg");
+  if (!/^[^\s]{3,}$/.test(loginId)) { msg.textContent = "Enter a login ID (for example their work email)."; return; }
+  if (S.users.has(loginId)) { msg.textContent = `${loginId} is already on the list. Change their tabs in the table.`; return; }
+  if (pw.length < 8) { msg.textContent = "Give them a password of at least 8 characters."; return; }
+  S.users.set(loginId, { loginId, name, password: await hashPassword(pw), tabs: [...ROLE_TABS[role]], admin: role === "Admin", active: true });
+  $("#u-email").value = ""; $("#u-name").value = ""; $("#u-pass").value = "";
+  msg.textContent = `Added ${name || loginId} as ${role}. Click Save users file to apply.`;
+  markDirty(); renderUsers();
+});
+$("#u-save").addEventListener("click", () => {
+  if (!S.users) return;
+  const out = { generatedAt: new Date().toISOString().slice(0, 10), users: [...S.users.values()].map(u => ({ loginId: u.loginId, name: u.name || "", password: u.password || "", tabs: u.tabs, admin: !!u.admin, active: u.active !== false })) };
+  const missing = out.users.filter(u => !u.password).map(u => u.loginId);
+  if (missing.length) { $("#u-msg").textContent = "Set a password for: " + missing.join(", "); return; }
+  const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a"); a.href = url; a.download = "users.json"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  S.usersDirty = false; renderUsers();
+  $("#u-msg").textContent = "users.json downloaded. Put it in the Call Audit repository (replace the old one) and push. It applies once deployed.";
 });
 
 /* ---------- derived ---------- */
@@ -806,8 +731,8 @@ function renderLookupState(fresh = false) {
     card.innerHTML = html; formCard.hidden = true; return;
   }
   card.innerHTML = html;
-  if (!S.sp?.audits || !S.me.id) {
-    card.insertAdjacentHTML("beforeend", `<div class="banner bad" style="margin-top:12px">You can look leads up, but saving audits needs you signed in with access to the Call Audit SharePoint site.</div>`);
+  if (!TOKEN || !S.me.id || !S.allowed?.has("new")) {
+    card.insertAdjacentHTML("beforeend", `<div class="banner bad" style="margin-top:12px">You can look leads up, but your account can't submit audits. Ask an admin for the New Audit tab.</div>`);
     formCard.hidden = true; return;
   }
   if (fresh || formCard.hidden || $("#audit-form").dataset.phone !== L.p) buildForm(null, L.p);
@@ -842,7 +767,7 @@ function buildForm(rec, phone) {
   const f = $("#audit-form");
   f.dataset.phone = phone || ""; delete f.dataset.built;
   if (!cfgReady()) {
-    f.innerHTML = `<div class="empty"><b>The questionnaire isn't set up yet</b>${S.cfg.taxonomy === undefined ? "Loading the questionnaire…" : "The owner adds the dropdown lists in Settings."}</div>`;
+    f.innerHTML = `<div class="empty"><b>The questionnaire isn't set up yet</b>${S.cfg.taxonomy === undefined ? "Loading the questionnaire…" : "The dropdown lists are filled in the first time an admin signs in. Ask an admin to sign in once, then reload."}</div>`;
     return;
   }
   f.dataset.built = "1";
@@ -954,15 +879,11 @@ $("#audit-form").addEventListener("submit", async e => {
   try {
     if (S.editing) await saveEdit(A); else await saveNew(A);
   } catch (err) {
-    msg.textContent = err?.status === 403 ? "SharePoint didn't allow this save. Ask an owner to check your permissions on the Call Audit site."
-      : (err?.message || "Saving failed. Try again.");
+    msg.textContent = err?.message || "Saving failed. Try again.";
   } finally { btn.disabled = false; }
 });
 async function saveNew(A) {
   const L = S.lead; if (!L) return;
-  // Re-read the list so a lead audited a moment ago by someone else is caught before saving.
-  await loadAudits();
-  if (auditsByPhone().get(L.p)) { $("#f-msg").textContent = ""; toast("This lead has just been audited by someone else."); renderLookupState(); return; }
   const now = Date.now();
   const rec = {
     phone: L.p, auditorId: S.me.id, ts: now, submittedAt: new Date(now).toISOString(), formVersion: FORM_VERSION,
@@ -970,10 +891,10 @@ async function saveNew(A) {
   };
   delete rec.answers.agentAudited;
   try {
-    await gx(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items`, { method: "POST", body: JSON.stringify({ fields: auditFields(rec) }) });
+    await api("/audits", { method: "POST", body: { record: rec } });
   } catch (e) {
-    // The unique Phone column refuses a duplicate that slipped in between the check and the save.
-    if (e.status === 409 || /unique|duplicate/i.test(e.message)) { await loadAudits(); toast("This lead has just been audited by someone else."); renderLookupState(); return; }
+    // the database's unique phone column refuses a second audit of the same lead
+    if (e.status === 409) { await loadAudits(); $("#f-msg").textContent = ""; toast("This lead has just been audited by someone else."); renderLookupState(); return; }
     throw e;
   }
   toast(`Audit saved for ${L.p}.`);
@@ -1003,13 +924,13 @@ async function saveEdit(A) {
   body.answers = { ...A }; delete body.answers.agentAudited;
   if (A.agentAudited) body.agentAudited = A.agentAudited;
   body.updatedAt = new Date().toISOString(); body.updatedBy = S.me.id;
-  await gx(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items/${a.key}/fields`, { method: "PATCH", body: JSON.stringify(auditFields(body)) });
-  a.d = body;
+  const r = await api(`/audits/${a.key}`, { method: "PUT", body: { record: body } });
+  a.d = r.record || body;
   toast("Changes saved."); cancelEdit(true);
 }
 async function deleteAudit(key) {
   const a = S.audits.get(key); if (!a || !S.me.isOwner) return;
-  await gx(`/sites/${S.sp.siteId}/lists/${S.sp.audits}/items/${a.key}`, { method: "DELETE" });
+  await api(`/audits/${a.key}`, { method: "DELETE" });
   S.audits.delete(key); closeDrawer();
   if (S.editing === key) cancelEdit(true);
   toast(`Audit for ${a.phone} deleted.`); render();
@@ -1210,7 +1131,7 @@ function renderSettings(fromCfg = false) {
 }
 document.addEventListener("input", e => { if (e.target.closest("#view-settings")) settingsDirty = true; });
 $("#set-save").addEventListener("click", async () => {
-  if (!S.me.isOwner || !S.sp?.settings) return;
+  if (!S.me.isOwner) return;
   const sections = [...document.querySelectorAll("#set-sections textarea")].map(t => {
     const map = new Map();
     for (const line of t.value.split("\n").map(l => l.trim()).filter(Boolean)) {
@@ -1234,21 +1155,19 @@ $("#set-save").addEventListener("click", async () => {
 
 $("#pool-file").addEventListener("change", async e => {
   const file = e.target.files[0]; e.target.value = "";
-  if (!file || !S.me.isOwner || !S.sp) return;
+  if (!file || !S.me.isOwner) return;
   const msg = $("#pool-msg");
   let j;
   try { j = JSON.parse(await file.text()); } catch (err) { msg.textContent = "That file isn't valid JSON. Choose the leads.json made by the build script."; return; }
   const ok = j && Array.isArray(j.rows) && j.rows.length && Array.isArray(j.fields) && ["ph", "lh", "le"].every(f => j.fields.includes(f)) && j.mask && j.dicts;
   if (!ok) { msg.textContent = "This isn't a masked lead file (it needs ph, lh and le columns). Choose the leads.json made by the build script."; return; }
-  msg.textContent = "Uploading to SharePoint…";
+  msg.textContent = "Uploading…";
   try {
-    await gx(`/sites/${S.sp.siteId}/drive/root:/${encodeURIComponent(CFG.poolFolder)}/leads.json:/content`, { method: "PUT", body: file, headers: { "Content-Type": "application/json" } });
+    await api("/pool", { method: "PUT", body: file, headers: { "Content-Type": "application/json" } });
     S.poolTag = null; await loadPool();
     msg.textContent = `Loaded ${fmtN(j.rows.length)} leads.`;
     toast("Lead pool updated.");
-  } catch (err) {
-    msg.textContent = "The upload failed: " + err.message;
-  }
+  } catch (err) { msg.textContent = "The upload failed: " + err.message; }
 });
 
 /* ---------- Excel export (owner) ---------- */
@@ -1295,12 +1214,12 @@ $("#btn-export").addEventListener("click", async () => {
 });
 
 $("#btn-refresh").addEventListener("click", async () => {
-  if (!S.sp?.audits) return;
+  if (!TOKEN) return;
   toast("Reloading audits…");
   try { await Promise.all([loadAudits(), loadPool()]); } catch (e) { dbErr(e); }
 });
 
-/* Defaults written to SharePoint the first time an owner creates the lists
+/* Defaults saved the first time an admin signs in
    (from "Updated Metric for Audit.xlsx" Issue Mapping and dreamfolks.com/dreamfolksclub). */
 const DEFAULT_TAXONOMY = [
  {
@@ -1450,17 +1369,11 @@ const DEFAULT_SERVICES = ["Private Club Membership", "Golf", "Global Airport Lou
   setTab(t);
   if (location.protocol === "file:") {
     S.dbState = "off"; $("#chip-me").textContent = "Not connected";
-    showGlobal("This page was opened as a file on your computer, so it can't sign you in. Open the Call Audit tool from its web address.");
+    showGlobal("This page was opened as a file on your computer, so it can't reach the audit server. Open the Call Audit tool from its web address.");
     render(); return;
   }
-  if (!CFG.clientId || /REPLACE/.test(CFG.clientId + CFG.tenantId + CFG.siteHost)) {
-    S.dbState = "off"; $("#chip-me").textContent = "Not set up";
-    showGlobal("Setup isn't finished: config.js still needs the tenant ID, app client ID and SharePoint site. See IT-SETUP.md.");
-    render(); return;
-  }
-  signIn()
-    .then(acct => acct && connect())
-    .catch(e => { S.dbState = "error"; showGlobal("Sign-in or SharePoint connection failed: " + (e?.message || e)); render(); });
+  if (!TOKEN) { showLogin(); return; }
+  api("/me").then(r => start(r.user)).catch(e => { if (e.status !== 401) showLogin(e.message); });
 })();
 </script>
 </body>

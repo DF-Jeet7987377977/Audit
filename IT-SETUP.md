@@ -1,119 +1,115 @@
-# DreamFolks Call Audit: IT setup
+# DreamFolks Call Audit: server setup
 
-A static web page (`index.html` + `config.js`) where sales auditors record lead-level call audits.
-People sign in with their DreamFolks Microsoft 365 account. Audits are stored in a SharePoint list.
-The page only ever acts **as the signed-in user** (delegated permissions), so SharePoint permissions decide who can do what.
+Same pattern as the Sales Dashboard (b2csales.dreamfolks.co.in):
+
+- **The page** (`index.html` + `config.js`) is a static file served by nginx at `https://salesaudit.dreamfolks.co.in/`.
+- **The `/api` helper** (`api/server.py`, plain Python 3) runs on the same server behind nginx at `/api/`. It stores audits, questionnaire lists and the lead pool in **MySQL**.
+- **Logins** use a Login ID and password. Users and their tab rights are kept in `users.json` in this repository, which admins manage on the page's **Users** tab and deploy through git. Passwords in `users.json` are salted PBKDF2 hashes, never plain text. The helper checks every login and every request, including tab rights, on the server.
+
+No Microsoft 365, SharePoint or Entra app is used.
 
 Owner / contact: Simran Singh (simran.singh@dreamfolks.com)
 
 ---
 
-## 1. Host the page (static, HTTPS)
+## 1. MySQL
 
-Serve the repository files as static content over HTTPS. **Deployed at `https://salesaudit.dreamfolks.co.in/`.**
+```bash
+sudo mysql < deploy/schema.sql        # first edit CHANGE-ME in that file to a real password
+```
 
-- Files: `index.html`, `config.js`, `vendor/msal-browser-2.38.3.min.js` (Microsoft's sign-in library, bundled). No server-side code, database or build step.
-- The page calls `https://login.microsoftonline.com` and `https://graph.microsoft.com`, and loads the Excel export library from `https://cdn.jsdelivr.net`. Allow these if a Content-Security-Policy is set.
-- Note the **exact URL** of `index.html`. Step 2 needs it.
+This creates the database `call_audit`, the user `callaudit`@`localhost` and three tables (`audits`, `settings`, `lead_pool`). `audits.phone` is **UNIQUE**, so a lead can only ever be audited once.
+The existing b2csales MySQL server can be used. It's a separate database.
 
-### Automatic deployment (GitHub Actions)
+## 2. The /api helper
 
-`.github/workflows/deploy.yml` copies `index.html`, `config.js` and `vendor/` to the server over SSH on every push to `main`. It then checks that the live site serves the new files. It needs a deploy login on the server, set up once:
+```bash
+sudo mkdir -p /opt/callaudit && sudo chown deploy:deploy /opt/callaudit
+# copy api/, users.json and requirements.txt into /opt/callaudit (the deploy workflow does this; see step 5)
+sudo apt-get install -y python3-pip && sudo pip3 install -r /opt/callaudit/requirements.txt   # mysql-connector-python
 
-1. **On the server**, create a deploy user that can write to the web root, and install rsync:
+sudo cp deploy/callaudit.env.example /etc/callaudit.env
+sudo nano /etc/callaudit.env          # CALL_AUDIT_SECRET = output of `openssl rand -hex 32`, MYSQL_PASS from step 1
+sudo chmod 600 /etc/callaudit.env
+
+sudo cp deploy/callaudit-api.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now callaudit-api
+curl -s http://127.0.0.1:8770/api/ping      # -> {"ok": true, "db": "mysql", "users": N}
+```
+
+`Restart=always` brings the helper back after a crash or reboot. The b2csales helper has been down (502) since August because nothing restarted it, so please keep this setting.
+If you prefer Docker like b2csales, run `python3 api/server.py` in a `python:3.11-slim` image with the same environment variables and `restart: unless-stopped`.
+
+## 3. nginx
+
+Add the `location /api/` block from `deploy/nginx-salesaudit.conf` to the existing `server { }` for salesaudit.dreamfolks.co.in, then run:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+curl -s https://salesaudit.dreamfolks.co.in/api/ping
+```
+
+## 4. First admin
+
+`users.json` needs at least one admin before anyone can sign in. On any machine with this repository:
+
+```bash
+python tools/add_user.py simran.singh@dreamfolks.com "Simran Singh" --admin
+```
+
+It asks for a password without showing it, and writes only the hash. Commit and push `users.json`. From then on, admins add and change everyone else on the **Users** tab: **Save users file**, put `users.json` in the repo, push.
+
+## 5. Automatic deployment (GitHub Actions)
+
+`.github/workflows/deploy.yml` runs on every push to `main`:
+
+- copies `index.html` and `config.js` to the web root;
+- copies `api/`, `users.json` and `requirements.txt` to `/opt/callaudit`;
+- restarts the helper and checks `/api/ping` on the live site.
+
+One-time setup:
+
+1. A `deploy` user on the server that owns the web root and `/opt/callaudit`, with rsync installed. Allow it to restart the helper without a password:
    ```bash
-   sudo adduser --disabled-password --gecos "" deploy
-   sudo apt-get install -y rsync
-   sudo chown -R deploy:www-data /var/www/salesaudit      # use the real web root
+   echo 'deploy ALL=(root) NOPASSWD: /bin/systemctl restart callaudit-api' | sudo tee /etc/sudoers.d/callaudit-deploy
    ```
-2. **Make an SSH key for GitHub** (on any machine) and allow it on the server:
+2. An SSH key for GitHub:
    ```bash
-   ssh-keygen -t ed25519 -N "" -C "github-deploy-salesaudit" -f salesaudit_deploy
-   # append salesaudit_deploy.pub to /home/deploy/.ssh/authorized_keys on the server
+   ssh-keygen -t ed25519 -N "" -C github-deploy-salesaudit -f salesaudit_deploy
    ```
-3. **Capture the server's host key**, so GitHub can verify it is talking to the right server:
-   ```bash
-   ssh-keyscan -p 22 <server-host-or-ip>
-   ```
-4. **In GitHub**, go to the repository → Settings → Secrets and variables → Actions → New repository secret, and add:
+   Add `salesaudit_deploy.pub` to `/home/deploy/.ssh/authorized_keys`.
+3. The server's host key: `ssh-keyscan <server>`.
+4. GitHub → repository → Settings → Secrets and variables → Actions:
 
    | Secret | Value |
    |---|---|
    | `DEPLOY_HOST` | server host name or IP |
    | `DEPLOY_USER` | `deploy` |
-   | `DEPLOY_PATH` | the nginx web root for salesaudit.dreamfolks.co.in, e.g. `/var/www/salesaudit` |
-   | `DEPLOY_SSH_KEY` | the whole private key file `salesaudit_deploy` |
-   | `DEPLOY_KNOWN_HOSTS` | the output of step 3 |
+   | `DEPLOY_PATH` | nginx web root for salesaudit, e.g. `/var/www/salesaudit` |
+   | `DEPLOY_API_PATH` | `/opt/callaudit` |
+   | `DEPLOY_SSH_KEY` | contents of `salesaudit_deploy` (private key) |
+   | `DEPLOY_KNOWN_HOSTS` | output of step 3 |
    | `DEPLOY_PORT` | only if SSH isn't on port 22 |
 
-5. **Run it**: Actions → "Deploy to salesaudit.dreamfolks.co.in" → **Run workflow**, or push any change. Until the secrets exist, each run is marked **skipped** with a note, not failed.
-
-## 2. Register the app in Microsoft Entra ID
-
-Entra admin centre → **App registrations → New registration**
-
-| Setting | Value |
-|---|---|
-| Name | `DreamFolks Call Audit` |
-| Supported account types | Accounts in this organizational directory only (single tenant) |
-| Redirect URI | Platform **Single-page application (SPA)**, URI = **`https://salesaudit.dreamfolks.co.in/`** (with the trailing slash) |
-
-Then:
-
-1. **API permissions → Add a permission → Microsoft Graph → Delegated permissions**: `User.Read` and `Sites.ReadWrite.All`.
-2. Click **Grant admin consent for DreamFolks**.
-3. Copy the **Application (client) ID** into `config.js` → `clientId`. The tenant ID (`6c120c14-40ec-4ef0-ab13-6e996c48c6a3`) is already filled in.
-
-`Sites.ReadWrite.All` is delegated. The page can never do more than the signed-in person is already allowed to do in SharePoint. If you prefer `Sites.Selected`, grant it on the Call Audit site only.
-
-## 3. Create the SharePoint site
-
-Create a site (a team site without a Microsoft 365 group, or a communication site) at
-`https://itdreamfolks.sharepoint.com/sites/CallAudit`, and make **Simran Singh a site owner**.
-If you use a different address, update `sitePath` in `config.js`.
-
-## 4. Create the lists (the owner does this from the page)
-
-Once steps 1–3 are done, the owner opens the page, signs in, goes to **Settings → Create the SharePoint lists**. This creates:
-
-- **Call Audits**: one item per audited lead. The `Phone` column is indexed and **enforces unique values**, so a lead can't be audited twice. The other columns are `LeadId, Agent, AgentHeard, Category, TalkBand, Source, City, Campaign, Interested, WhyNoSale, SubmittedAt` and `RecordJson`, which holds the full audit.
-- **Call Audit Settings**: the questionnaire dropdown lists, pre-filled.
-- **Call Audit Users**: who may open the tool and which tabs each person sees (`Email` unique, `DisplayName`, `Tabs`, `IsAdmin`, `Active`). It starts with the owners from `config.js` as admins. Admins manage it on the page's **Users** tab.
-
-The owner then uploads `leads.json` (Settings → Lead pool). It is saved to `Documents/CallAudit/leads.json`.
-
-## 5. Permissions: auditors add and view only
-
-Auditors must be able to read everything and **add** audits, but not edit or delete them. Only owners edit.
-
-1. **Site permissions**: put auditors in the site's **Visitors** group (Read).
-2. **Create a permission level**: Site settings → Site permissions → **Permission Levels → Add a Permission Level**:
-   - Name: `Add and View`
-   - List permissions: **Add Items**, **View Items**, **Open Items**, View Versions
-   - Site permissions: **View Pages**, **Browse User Information**, **Use Remote Interfaces**, **Open**
-   - Leave **Edit Items** and **Delete Items** unticked.
-3. **Call Audits list** → List settings → Permissions for this list → **Stop Inheriting Permissions** → grant the auditors group **Add and View**. Owners keep Full Control.
-4. Leave **Call Audit Settings**, **Call Audit Users** and **Documents** inheriting: everyone reads, owners edit. Everyone must be able to read **Call Audit Users**, because the page reads it to decide which tabs each person sees.
-5. **Viewers**, meaning people given only All Audits / Auditors / Coverage on the Users tab: keep them in Visitors (Read) and do **not** give them **Add and View** on Call Audits.
-6. **Admins** added on the Users tab also need **Edit** or **Full Control** on the site. Otherwise SharePoint refuses their edit, delete and settings changes.
-
-### Two layers of access
-
-- **The page's Users tab** decides who can open the tool and which tabs they see.
-- **SharePoint permissions** decide what anyone can actually read or change, including through SharePoint itself. Keep the two in line: auditors get Add and View, viewers get Read, admins get Edit or Full Control.
-
-Result:
-
-| | Viewers | Auditors | Admins |
-|---|---|---|---|
-| Tabs | All Audits, Auditors, Coverage (as ticked) | + New Audit | All, including Settings and Users |
-| See all audits | ✔ | ✔ | ✔ |
-| Submit an audit | ✘ | ✔ | ✔ |
-| Edit or delete an audit, download | ✘ | ✘ | ✔ |
-| Change questionnaire lists, lead pool or users | ✘ | ✘ | ✔ |
+Until these exist, each run is marked **skipped**, not failed.
 
 ## 6. Check
 
-- An auditor signs in, finds a lead, submits an audit, and sees it in **All Audits** and **Auditors**.
-- The same auditor gets "Already audited" on that lead and has no Edit or Delete buttons. SharePoint would refuse those actions anyway.
-- In SharePoint, the **Call Audits** list shows the audit as a row and can be exported to Excel from the list toolbar.
+1. `https://salesaudit.dreamfolks.co.in/` shows the **Sign in** screen.
+2. The admin signs in → **Settings** → **Upload leads.json** (from `tools/build_leads.py`).
+3. **Users** tab: add an auditor, **Save users file**, commit and push `users.json`.
+4. The auditor signs in, submits an audit, and sees it in **All Audits** and **Auditors**. A second audit on the same lead is refused.
+
+## Backups
+
+Everything lives in the MySQL database `call_audit`. Back it up with the rest of the server, e.g. `mysqldump call_audit > call_audit_$(date +%F).sql`.
+
+## Access rules (enforced by the helper)
+
+| | Viewer | Auditor | Admin |
+|---|---|---|---|
+| Tabs | All Audits, Auditors, Coverage (as ticked) | + New Audit | Every tab, including Settings and Users |
+| Submit an audit | ✘ | ✔ | ✔ |
+| Edit, delete or download audits | ✘ | ✘ | ✔ |
+| Questionnaire lists, lead pool, users | ✘ | ✘ | ✔ |

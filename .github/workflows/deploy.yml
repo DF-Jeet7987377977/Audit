@@ -1,8 +1,8 @@
 name: Deploy to salesaudit.dreamfolks.co.in
 
-# Copies the site files to the nginx server over SSH on every push to main,
-# then checks that the live site serves the new version.
-# Setup (server user, key, secrets): see IT-SETUP.md, "Automatic deployment".
+# On every push to main: copy the page to the nginx web root and the /api helper + users.json
+# to the service folder, restart the helper, then check the live site.
+# One-time server setup: IT-SETUP.md.
 
 on:
   push:
@@ -19,7 +19,8 @@ jobs:
     env:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}            # nginx web root, e.g. /var/www/salesaudit
+      DEPLOY_API_PATH: ${{ secrets.DEPLOY_API_PATH }}    # service folder, e.g. /opt/callaudit
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
       SITE_URL: https://salesaudit.dreamfolks.co.in
     steps:
@@ -27,7 +28,7 @@ jobs:
         id: secrets
         run: |
           missing=""
-          for s in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH; do [ -z "${!s}" ] && missing="$missing $s"; done
+          for s in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_API_PATH; do [ -z "${!s}" ] && missing="$missing $s"; done
           [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ] && missing="$missing DEPLOY_SSH_KEY"
           [ -z "${{ secrets.DEPLOY_KNOWN_HOSTS }}" ] && missing="$missing DEPLOY_KNOWN_HOSTS"
           if [ -n "$missing" ]; then
@@ -44,8 +45,9 @@ jobs:
       - name: Check the files to deploy
         if: steps.secrets.outputs.ready == 'true'
         run: |
-          test -f index.html && test -f config.js && test -f vendor/msal-browser-2.38.3.min.js
-          if grep -q 'REPLACE-WITH' config.js; then echo "::error::config.js still has a placeholder value"; exit 1; fi
+          test -f index.html && test -f config.js && test -f api/server.py && test -f users.json
+          python3 -c "import json; d=json.load(open('users.json')); assert all(u['password'].startswith('pbkdf2_sha256\$') for u in d['users']), 'users.json has a password that is not hashed'"
+          python3 -m py_compile api/server.py
 
       - name: Set up SSH
         if: steps.secrets.outputs.ready == 'true'
@@ -54,25 +56,22 @@ jobs:
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
 
       - name: Copy files to the server
         if: steps.secrets.outputs.ready == 'true'
         run: |
-          PORT="${DEPLOY_PORT:-22}"
-          SSH="ssh -i ~/.ssh/deploy_key -p $PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
-          # Only the site's own files; anything else in the web root is left alone.
-          rsync -rvz --checksum --chmod=D755,F644 -e "$SSH" \
-            index.html config.js vendor \
-            "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+          SSH="ssh -i $HOME/.ssh/deploy_key -p ${DEPLOY_PORT:-22} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          # page -> web root (nothing else there is touched)
+          rsync -rvz --checksum --chmod=D755,F644 -e "$SSH" index.html config.js "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+          # helper + users -> service folder (not web-served)
+          rsync -rvz --checksum --chmod=D750,F640 -e "$SSH" api users.json requirements.txt "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_API_PATH/"
+          # restart only when the helper code changed; users.json is picked up without a restart
+          $SSH "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n /bin/systemctl restart callaudit-api"
 
       - name: Check the live site
         if: steps.secrets.outputs.ready == 'true'
         run: |
-          sleep 3
-          want=$(grep -o 'clientId: "[^"]*"' config.js)
-          got=$(curl -fsS "$SITE_URL/config.js?v=$GITHUB_SHA" | grep -o 'clientId: "[^"]*"' || true)
-          [ "$want" = "$got" ] || { echo "::error::Live config.js does not match ($got)"; exit 1; }
-          curl -fsS -o /dev/null "$SITE_URL/vendor/msal-browser-2.38.3.min.js?v=$GITHUB_SHA" || { echo "::error::Live site is missing vendor/msal-browser-2.38.3.min.js"; exit 1; }
-          curl -fsS "$SITE_URL/?v=$GITHUB_SHA" | grep -q 'vendor/msal-browser-2.38.3.min.js' || { echo "::error::Live index.html is not the new version"; exit 1; }
-          echo "Live site is up to date."
+          sleep 4
+          curl -fsS "$SITE_URL/?v=$GITHUB_SHA" | grep -q 'id="login-form"' || { echo "::error::Live index.html is not the new version"; exit 1; }
+          curl -fsS "$SITE_URL/api/ping" | tee /dev/stderr | grep -q '"ok": true' || { echo "::error::The /api helper is not answering on the live site"; exit 1; }
+          echo "Live site and /api helper are up."

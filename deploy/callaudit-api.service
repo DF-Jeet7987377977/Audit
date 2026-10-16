@@ -1,0 +1,20 @@
+# systemd unit for the Call Audit /api helper.
+# Install:  sudo cp deploy/callaudit-api.service /etc/systemd/system/
+#           sudo systemctl daemon-reload && sudo systemctl enable --now callaudit-api
+# Restart=always keeps it running after crashes and reboots (unlike the b2csales helper that stayed down).
+[Unit]
+Description=DreamFolks Call Audit API
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/opt/callaudit
+EnvironmentFile=/etc/callaudit.env
+ExecStart=/usr/bin/python3 /opt/callaudit/api/server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
