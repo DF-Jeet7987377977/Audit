@@ -10,7 +10,7 @@ Owner / contact: Simran Singh (simran.singh@dreamfolks.com)
 
 ## 1. Host the page (static, HTTPS)
 
-Serve the repository files as static content over HTTPS, for example `https://callaudit.dreamfolks.co.in/` or `https://b2csales.dreamfolks.co.in/audit/`.
+Serve the repository files as static content over HTTPS. **Deployed at `https://salesaudit.dreamfolks.co.in/`.**
 
 - Files: `index.html`, `config.js`. No server-side code, database or build step.
 - The page loads Microsoft's sign-in library from `https://alcdn.msauth.net` and the Excel export library from `https://cdn.jsdelivr.net`. Allow both if a Content-Security-Policy is set.
@@ -24,7 +24,7 @@ Entra admin centre → **App registrations → New registration**
 |---|---|
 | Name | `DreamFolks Call Audit` |
 | Supported account types | Accounts in this organizational directory only (single tenant) |
-| Redirect URI | Platform **Single-page application (SPA)**, URI = the exact page URL from step 1 (for example `https://callaudit.dreamfolks.co.in/`) |
+| Redirect URI | Platform **Single-page application (SPA)**, URI = **`https://salesaudit.dreamfolks.co.in/`** (with the trailing slash) |
 
 Then:
 

@@ -411,7 +411,7 @@ const SCOPES = ["User.Read", "Sites.ReadWrite.All"];
 let msalApp = null;
 async function signIn() {
   msalApp = new msal.PublicClientApplication({
-    auth: { clientId: CFG.clientId, authority: `https://login.microsoftonline.com/${CFG.tenantId}`, redirectUri: location.origin + location.pathname },
+    auth: { clientId: CFG.clientId, authority: `https://login.microsoftonline.com/${CFG.tenantId}`, redirectUri: location.origin + location.pathname.replace(/index\.html$/, "") },
     cache: { cacheLocation: "localStorage" },
   });
   if (msalApp.initialize) await msalApp.initialize();
