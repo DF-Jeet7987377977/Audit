@@ -2,7 +2,7 @@
 window.AUDIT_CONFIG = {
   // Microsoft Entra ID (Azure AD)
   tenantId: "6c120c14-40ec-4ef0-ab13-6e996c48c6a3",          // DreamFolks tenant
-  clientId: "REPLACE-WITH-APP-CLIENT-ID",                     // from the app registration (IT-SETUP.md step 2)
+  clientId: "57140927-4cf0-4352-a9bd-f80a3b7e4253",           // Entra app registration "Sales Audit"
 
   // SharePoint site that stores the audits
   siteHost: "itdreamfolks.sharepoint.com",
