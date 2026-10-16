@@ -16,6 +16,38 @@ Serve the repository files as static content over HTTPS. **Deployed at `https://
 - The page calls `https://login.microsoftonline.com` and `https://graph.microsoft.com`, and loads the Excel export library from `https://cdn.jsdelivr.net`. Allow these if a Content-Security-Policy is set.
 - Note the **exact URL** of `index.html`. Step 2 needs it.
 
+### Automatic deployment (GitHub Actions)
+
+`.github/workflows/deploy.yml` copies `index.html`, `config.js` and `vendor/` to the server over SSH on every push to `main`. It then checks that the live site serves the new files. It needs a deploy login on the server, set up once:
+
+1. **On the server**, create a deploy user that can write to the web root, and install rsync:
+   ```bash
+   sudo adduser --disabled-password --gecos "" deploy
+   sudo apt-get install -y rsync
+   sudo chown -R deploy:www-data /var/www/salesaudit      # use the real web root
+   ```
+2. **Make an SSH key for GitHub** (on any machine) and allow it on the server:
+   ```bash
+   ssh-keygen -t ed25519 -N "" -C "github-deploy-salesaudit" -f salesaudit_deploy
+   # append salesaudit_deploy.pub to /home/deploy/.ssh/authorized_keys on the server
+   ```
+3. **Capture the server's host key**, so GitHub can verify it is talking to the right server:
+   ```bash
+   ssh-keyscan -p 22 <server-host-or-ip>
+   ```
+4. **In GitHub**, go to the repository → Settings → Secrets and variables → Actions → New repository secret, and add:
+
+   | Secret | Value |
+   |---|---|
+   | `DEPLOY_HOST` | server host name or IP |
+   | `DEPLOY_USER` | `deploy` |
+   | `DEPLOY_PATH` | the nginx web root for salesaudit.dreamfolks.co.in, e.g. `/var/www/salesaudit` |
+   | `DEPLOY_SSH_KEY` | the whole private key file `salesaudit_deploy` |
+   | `DEPLOY_KNOWN_HOSTS` | the output of step 3 |
+   | `DEPLOY_PORT` | only if SSH isn't on port 22 |
+
+5. **Run it**: Actions → "Deploy to salesaudit.dreamfolks.co.in" → **Run workflow**, or push any change. Until the secrets exist, each run is marked **skipped** with a note, not failed.
+
 ## 2. Register the app in Microsoft Entra ID
 
 Entra admin centre → **App registrations → New registration**
