@@ -13,6 +13,71 @@
       ],
       "admin": true,
       "active": true
+    },
+    {
+      "loginId": "lalit@dreamfolks.com",
+      "name": "Lalit Kumar",
+      "password": "pbkdf2_sha256$200000$28eRV4mSR/Ufb27vBD1X2A==$r/dzQq+20skBTZqfA+MWNNw6HEUeiRFStMynn4YXj1c=",
+      "tabs": [
+        "new",
+        "all",
+        "auditors",
+        "coverage"
+      ],
+      "admin": false,
+      "active": true
+    },
+    {
+      "loginId": "sujoy.das@dreamfolks.com",
+      "name": "Sujoy Das",
+      "password": "pbkdf2_sha256$200000$OSSCV2Kb6xyDqIeZfQ9wBw==$yzdFvxZwP7Qgz62KmkLouO7nhZVeH6iLZPJVd6TUk+U=",
+      "tabs": [
+        "new",
+        "all",
+        "auditors",
+        "coverage"
+      ],
+      "admin": true,
+      "active": true
+    },
+    {
+      "loginId": "pawan@dreamfolks.com",
+      "name": "Pawan Ram Singh",
+      "password": "pbkdf2_sha256$200000$lhltI27EeL9NTZRkuEvVyQ==$nShvhnjZ8JxPp+kCFuA4K8FVecyCd42N0sVKQQfadPo=",
+      "tabs": [
+        "new",
+        "all",
+        "auditors",
+        "coverage"
+      ],
+      "admin": false,
+      "active": true
+    },
+    {
+      "loginId": "ankit.gulia@dreamfolks.com",
+      "name": "Ankit Gulia",
+      "password": "pbkdf2_sha256$200000$jprOVciCNqp1puLCykNFLQ==$LBb2VPGyB9Z9od54CMdf47aJXp3VQTXHH46Gp556LMA=",
+      "tabs": [
+        "new",
+        "all",
+        "auditors",
+        "coverage"
+      ],
+      "admin": false,
+      "active": true
+    },
+    {
+      "loginId": "ashwani@dreamfolks.com",
+      "name": "Ashwani Kumar",
+      "password": "pbkdf2_sha256$200000$xkFXKJefuxLVa+StdiuwmQ==$Q9xwmGhs2uNpZGlEjszeEorEU1fHwrk61iRgAsnd0E0=",
+      "tabs": [
+        "new",
+        "all",
+        "auditors",
+        "coverage"
+      ],
+      "admin": false,
+      "active": true
     }
   ]
 }
