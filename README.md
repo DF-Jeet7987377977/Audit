@@ -13,8 +13,4 @@ Shared, lead-level audit tool for obsolete and rejected sales leads. Auditors lo
 
 ## Refreshing the lead pool
 
-```bash
-python -I tools/build_leads.py <out_dir>
-```
-
-Then, in the app: **Settings → Lead pool → Upload leads.json**. `leads.json` holds no readable phone numbers or Lead IDs, but keep it out of git anyway (see `.gitignore`).
+In the app: **Settings → Lead pool**. Choose the updated Excel files (Talk Time Bands, plus Lead Data and Calling Data if they changed), then click **Upload and build**. There's no size limit. The server (`api/leadpool.py`) matches, masks and replaces the pool. `tools/build_leads.py` runs the same builder offline if ever needed.

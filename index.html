@@ -267,11 +267,15 @@ td.r,th.r{text-align:right}
   <!-- SETTINGS -->
   <section id="view-settings" class="stack" hidden>
     <div class="card stack">
-      <div><h2>Lead pool</h2><p class="sub">The leads auditors can look up. Upload the masked <b>leads.json</b> made by the build script (it holds no readable phone numbers or Lead IDs). It is saved on the audit server and replaces the current pool for everyone. Saved audits are not changed.</p></div>
+      <div><h2>Lead pool</h2><p class="sub">The leads auditors can look up, built from your Excel files, of any size. Choose the files that changed and click <b>Upload and build</b>. The server reads them, matches leads to Lead Data and Calling Data, masks phone numbers and Lead IDs, and replaces the pool for everyone. A file you don't choose again keeps its last upload. Saved audits are not changed.</p></div>
       <p class="num" id="pool-status" style="margin:0"></p>
-      <div class="row"><label class="btn primary" for="pool-file" style="display:inline-block">Upload leads.json</label>
-        <input type="file" id="pool-file" accept=".json,application/json" hidden>
-        <span class="muted" id="pool-msg" role="status"></span></div>
+      <div class="grid2">
+        <div class="stack" style="gap:6px"><label class="lbl" for="xl-leads">Audit leads: Talk Time Bands <span class="muted">(required)</span></label><input type="file" id="xl-leads" accept=".xlsx,.xlsm"><span class="muted num" id="xl-leads-info"></span></div>
+        <div class="stack" style="gap:6px"><label class="lbl" for="xl-leaddata">Lead Data <span class="muted">(source, city, campaign, ad)</span></label><input type="file" id="xl-leaddata" accept=".xlsx,.xlsm"><span class="muted num" id="xl-leaddata-info"></span></div>
+        <div class="stack" style="gap:6px"><label class="lbl" for="xl-calling">Calling Data <span class="muted">(call counts and dates)</span></label><input type="file" id="xl-calling" accept=".xlsx,.xlsm"><span class="muted num" id="xl-calling-info"></span></div>
+      </div>
+      <div class="row"><button class="btn primary" id="xl-go" type="button">Upload and build</button><span class="muted" id="pool-msg" role="status"></span></div>
+      <div class="bar" id="xl-bar" hidden><i style="width:0%"></i></div>
     </div>
     <div class="card stack">
       <div><h2>Questionnaire lists</h2><p class="sub">Only admins see this tab. One option per line, written as <b>Level 1 &gt; Level 2</b>. Changes apply to new audits. Saved audits keep the text they were submitted with.</p></div>
@@ -1117,7 +1121,8 @@ function renderCoverage() {
 let settingsDirty = false;
 function renderSettings(fromCfg = false) {
   if (!S.me.isOwner) return;
-  $("#pool-status").innerHTML = S.pool.length ? `Current pool: <b>${fmtN(S.pool.length)}</b> leads · lead data as of ${esc(S.built)}` : "No lead pool loaded yet.";
+  $("#pool-status").innerHTML = S.pool.length ? `Current pool: <b>${fmtN(S.pool.length)}</b> leads · built ${esc(S.built)}` : "No lead pool loaded yet.";
+  if (S.xl === undefined && !S.xlLoading) loadExcelStatus();
   if (settingsDirty && fromCfg) return;
   if ($("#set-sections").dataset.filled && !fromCfg) return;
   const secs = S.cfg.taxonomy?.sections || [];
@@ -1153,21 +1158,75 @@ $("#set-save").addEventListener("click", async () => {
   } catch (err) { $("#set-msg").textContent = "Saving failed. Try again."; }
 });
 
-$("#pool-file").addEventListener("change", async e => {
-  const file = e.target.files[0]; e.target.value = "";
-  if (!file || !S.me.isOwner) return;
+/* ---------- lead pool from Excel (admins) ----------
+   Files go up in 768 KB pieces, so nginx's request size limit never applies and file size is unlimited. */
+const XL_KINDS = ["leads", "leaddata", "calling"];
+const XL_CHUNK = 768 * 1024;
+const fmtMB = b => (b / 1048576).toFixed(1) + " MB";
+async function loadExcelStatus() {
+  S.xlLoading = true;
+  try { S.xl = await api("/excel/status"); renderExcel(); if (S.xl.build?.state === "running") pollBuild(); }
+  catch (e) { $("#pool-msg").textContent = "Couldn't read the upload status: " + e.message; }
+  finally { S.xlLoading = false; }
+}
+function renderExcel() {
+  const files = S.xl?.files || {};
+  for (const k of XL_KINDS) {
+    const f = files[k];
+    $(`#xl-${k}-info`).textContent = f ? `Last upload: ${f.name} · ${fmtMB(f.size)} · ${fmtTs(Date.parse(f.uploadedAt))}` : "Not uploaded yet";
+  }
+  const b = S.xl?.build;
+  if (b && b.state !== "idle") $("#pool-msg").textContent = b.state === "error" ? "Build failed: " + b.message : b.message;
+  $("#xl-go").disabled = b?.state === "running";
+}
+function setBar(frac) { const bar = $("#xl-bar"); bar.hidden = frac == null; bar.firstElementChild.style.width = Math.round((frac || 0) * 100) + "%"; }
+async function uploadExcel(kind, file, onBytes) {
+  const { id } = await api("/excel/start", { method: "POST", body: { kind, name: file.name, size: file.size } });
+  for (let off = 0; off < file.size; off += XL_CHUNK) {
+    const part = file.slice(off, off + XL_CHUNK);
+    for (let attempt = 1; ; attempt++) {
+      try { await api(`/excel/${id}?offset=${off}`, { method: "PUT", body: part, headers: { "Content-Type": "application/octet-stream" } }); break; }
+      catch (e) { if (attempt >= 3 || e.status === 401 || e.status === 403) throw e; await new Promise(r => setTimeout(r, 1500 * attempt)); }
+    }
+    onBytes(Math.min(off + XL_CHUNK, file.size));
+  }
+  await api(`/excel/${id}/finish`, { method: "POST", body: {} });
+}
+function pollBuild() {
+  clearTimeout(S.buildPoll);
+  S.buildPoll = setTimeout(async () => {
+    try {
+      S.xl = await api("/excel/status"); renderExcel();
+      const b = S.xl.build;
+      if (b.state === "running") { pollBuild(); return; }
+      setBar(null);
+      if (b.state === "done") {
+        const st = b.stats || {};
+        $("#pool-msg").textContent = `${b.message}` + (st.leadDataMatched != null ? ` Lead Data matched ${fmtN(st.leadDataMatched)}.` : "") + (st.callingMatched != null ? ` Calling Data matched ${fmtN(st.callingMatched)}.` : "");
+        S.poolTag = null; await loadPool(); renderSettings(); toast("Lead pool updated.");
+      }
+    } catch (e) { pollBuild(); }
+  }, 3000);
+}
+$("#xl-go").addEventListener("click", async () => {
+  if (!S.me.isOwner) return;
+  const chosen = XL_KINDS.map(k => [k, $(`#xl-${k}`).files[0]]).filter(([, f]) => f);
   const msg = $("#pool-msg");
-  let j;
-  try { j = JSON.parse(await file.text()); } catch (err) { msg.textContent = "That file isn't valid JSON. Choose the leads.json made by the build script."; return; }
-  const ok = j && Array.isArray(j.rows) && j.rows.length && Array.isArray(j.fields) && ["ph", "lh", "le"].every(f => j.fields.includes(f)) && j.mask && j.dicts;
-  if (!ok) { msg.textContent = "This isn't a masked lead file (it needs ph, lh and le columns). Choose the leads.json made by the build script."; return; }
-  msg.textContent = "Uploading…";
+  if (!chosen.length && !S.xl?.files?.leads) { msg.textContent = "Choose the audit leads Excel (Talk Time Bands) first."; return; }
+  const bad = chosen.find(([, f]) => !/\.xls[xm]$/i.test(f.name));
+  if (bad) { msg.textContent = `${bad[1].name} isn't an Excel .xlsx file.`; return; }
+  const total = chosen.reduce((n, [, f]) => n + f.size, 0) || 1;
+  $("#xl-go").disabled = true;
   try {
-    await api("/pool", { method: "PUT", body: file, headers: { "Content-Type": "application/json" } });
-    S.poolTag = null; await loadPool();
-    msg.textContent = `Loaded ${fmtN(j.rows.length)} leads.`;
-    toast("Lead pool updated.");
-  } catch (err) { msg.textContent = "The upload failed: " + err.message; }
+    let done = 0;
+    for (const [k, f] of chosen) {
+      await uploadExcel(k, f, sent => { msg.textContent = `Uploading ${f.name}… ${fmtMB(done + sent)} of ${fmtMB(total)}`; setBar((done + sent) / total); });
+      done += f.size; $(`#xl-${k}`).value = "";
+    }
+    msg.textContent = "Building the lead pool on the server…"; setBar(1);
+    await api("/excel/build", { method: "POST", body: {} });
+    pollBuild();
+  } catch (e) { msg.textContent = "The upload failed: " + e.message; setBar(null); $("#xl-go").disabled = false; }
 });
 
 /* ---------- Excel export (owner) ---------- */

@@ -11,10 +11,11 @@ Environment:
   CALL_AUDIT_SECRET    long random string used to sign login tokens (required in production)
   CALL_AUDIT_USERS     path to users.json (default: users.json next to this folder)
   MYSQL_HOST / MYSQL_PORT / MYSQL_USER / MYSQL_PASS / MYSQL_DB   (MYSQL_DB default call_audit)
+  CALL_AUDIT_UPLOADS   folder for uploaded Excel files (default: uploads/ next to this folder)
   CALL_AUDIT_SQLITE    path to a SQLite file instead of MySQL (local testing only)
   CALL_AUDIT_STATIC    folder to also serve the page from (local testing only)
 """
-import base64, hashlib, hmac, json, os, re, secrets, sqlite3, sys, threading, time
+import base64, hashlib, hmac, json, os, re, secrets, sqlite3, sys, threading, time, uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
@@ -25,7 +26,10 @@ SECRET = os.getenv("CALL_AUDIT_SECRET") or secrets.token_hex(32)
 USERS_FILE = os.getenv("CALL_AUDIT_USERS") or os.path.join(os.path.dirname(HERE), "users.json")
 SQLITE = os.getenv("CALL_AUDIT_SQLITE")
 STATIC = os.getenv("CALL_AUDIT_STATIC")
+UPLOADS = os.getenv("CALL_AUDIT_UPLOADS") or os.path.join(os.path.dirname(HERE), "uploads")
+EXCEL_KINDS = {"leads": "Audit leads (Talk Time Bands)", "leaddata": "Lead Data", "calling": "Calling Data"}
 TOKEN_HOURS = 12
+sys.path.insert(0, HERE)
 WORK_TABS = ("new", "all", "auditors", "coverage")
 MAX_BODY = 20 * 1024 * 1024
 if not os.getenv("CALL_AUDIT_SECRET"):
@@ -165,8 +169,59 @@ def public_user(u):
     return {"loginId": u["loginId"].strip().lower(), "name": u.get("name") or u["loginId"], "admin": admin, "tabs": tabs}
 
 
+# ---------------------------------------------------------------- lead pool storage + Excel builds
+def store_pool(j, who):
+    txt, ts = json.dumps(j, separators=(",", ":")), now_iso()
+    if DBI.run("SELECT id FROM lead_pool WHERE id=1", fetch=True):
+        DBI.run("UPDATE lead_pool SET content=%s, rows_count=%s, updated_at=%s, updated_by=%s WHERE id=1", (txt, len(j["rows"]), ts, who))
+    else:
+        DBI.run("INSERT INTO lead_pool (id, content, rows_count, updated_at, updated_by) VALUES (1,%s,%s,%s,%s)", (txt, len(j["rows"]), ts, who))
+    log(f"lead pool replaced by {who}: {len(j['rows'])} rows")
+
+
+_uploads = {}                      # upload id -> {kind, name, size, received, tmp, by}
+_build = {"state": "idle"}         # state: idle | running | done | error
+_build_lock = threading.Lock()
+
+
+def excel_files():
+    meta_path = os.path.join(UPLOADS, "files.json")
+    try:
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        meta = {}
+    return {k: v for k, v in meta.items() if os.path.isfile(os.path.join(UPLOADS, k + ".xlsx"))}
+
+
+def save_excel_meta(kind, info):
+    meta = excel_files()
+    meta[kind] = info
+    with open(os.path.join(UPLOADS, "files.json"), "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=1)
+
+
+def run_build(who):
+    import leadpool
+    files = excel_files()
+    path = lambda k: os.path.join(UPLOADS, k + ".xlsx") if k in files else None
+
+    def progress(msg):
+        _build["message"] = msg
+
+    try:
+        payload, stats = leadpool.build(path("leads"), path("leaddata"), path("calling"), progress)
+        progress("Saving the lead pool…")
+        store_pool(payload, who)
+        _build.update(state="done", message=f"Built the lead pool: {stats['leads']:,} leads.", stats=stats, finishedAt=now_iso())
+    except Exception as e:
+        log(f"build failed: {e!r}")
+        _build.update(state="error", message=str(e) if isinstance(e, ValueError) else f"The build failed: {e}", finishedAt=now_iso())
+
+
 # ---------------------------------------------------------------- HTTP
 FIELD_RE = re.compile(r"^/api/audits/(\d+)$")
+UPLOAD_RE = re.compile(r"^/api/excel/([0-9a-f]{32})(/finish)?$")
 SETTING_RE = re.compile(r"^/api/settings/([a-z_]{1,64})$")
 _fail = {}  # login -> [count, first_ts] for simple brute-force protection
 
@@ -261,6 +316,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not me["admin"]:
                     return self.err(403, "Only admins can replace the lead pool.")
                 return self.put_pool(me)
+            if p.startswith("/api/excel"):
+                if not me["admin"]:
+                    return self.err(403, "Only admins can upload lead files.")
+                return self.excel(me, method, p)
             if p == "/api/users" and method == "GET":
                 if not me["admin"]:
                     return self.err(403, "Only admins can see users.")
@@ -362,13 +421,69 @@ class Handler(BaseHTTPRequestHandler):
         j = self.body_json()
         if not (isinstance(j.get("rows"), list) and j["rows"] and all(f in (j.get("fields") or []) for f in ("ph", "lh", "le")) and j.get("mask")):
             return self.err(400, "This isn't a masked lead file (it needs ph, lh and le columns).")
-        txt, ts = json.dumps(j, separators=(",", ":")), now_iso()
-        if DBI.run("SELECT id FROM lead_pool WHERE id=1", fetch=True):
-            DBI.run("UPDATE lead_pool SET content=%s, rows_count=%s, updated_at=%s, updated_by=%s WHERE id=1", (txt, len(j["rows"]), ts, me["loginId"]))
-        else:
-            DBI.run("INSERT INTO lead_pool (id, content, rows_count, updated_at, updated_by) VALUES (1,%s,%s,%s,%s)", (txt, len(j["rows"]), ts, me["loginId"]))
-        log(f"lead pool replaced by {me['loginId']}: {len(j['rows'])} rows")
+        store_pool(j, me["loginId"])
         return self.send(200, {"ok": True, "rows": len(j["rows"])})
+
+    def excel(self, me, method, p):
+        """Excel files arrive in pieces (each under nginx's body limit), so file size is unlimited.
+        POST /api/excel/start {kind,name,size} -> {id}; PUT /api/excel/<id>?offset=N <bytes>;
+        POST /api/excel/<id>/finish; POST /api/excel/build; GET /api/excel/status"""
+        if p == "/api/excel/status" and method == "GET":
+            return self.send(200, {"files": excel_files(), "build": _build})
+        if p == "/api/excel/start" and method == "POST":
+            b = self.body_json()
+            kind, size = b.get("kind"), int(b.get("size") or 0)
+            if kind not in EXCEL_KINDS:
+                return self.err(400, "Unknown file type.")
+            if not str(b.get("name", "")).lower().endswith((".xlsx", ".xlsm")) or size <= 0:
+                return self.err(400, "Choose an Excel .xlsx file.")
+            os.makedirs(UPLOADS, exist_ok=True)
+            for old in os.listdir(UPLOADS):   # clear abandoned partial uploads older than 6 hours
+                fp = os.path.join(UPLOADS, old)
+                if old.endswith(".part") and time.time() - os.path.getmtime(fp) > 6 * 3600:
+                    os.remove(fp)
+            uid = uuid.uuid4().hex
+            tmp = os.path.join(UPLOADS, f".{uid}.part")
+            open(tmp, "wb").close()
+            _uploads[uid] = {"kind": kind, "name": os.path.basename(str(b["name"]))[:200], "size": size, "received": 0, "tmp": tmp, "by": me["loginId"]}
+            return self.send(200, {"id": uid})
+        if p == "/api/excel/build" and method == "POST":
+            if "leads" not in excel_files():
+                return self.err(400, "Upload the audit leads Excel (Talk Time Bands) first.")
+            with _build_lock:
+                if _build.get("state") == "running":
+                    return self.err(409, "A build is already running.")
+                _build.clear()
+                _build.update(state="running", message="Starting…", startedAt=now_iso(), by=me["loginId"])
+            threading.Thread(target=run_build, args=(me["loginId"],), daemon=True).start()
+            return self.send(202, {"build": _build})
+        m = UPLOAD_RE.match(p)
+        up = _uploads.get(m.group(1)) if m else None
+        if not up:
+            return self.err(404, "That upload has expired. Start the upload again.")
+        if method == "PUT" and not m.group(2):
+            offset = int((urlparse(self.path).query.split("offset=") + ["0"])[1].split("&")[0] or 0)
+            n = int(self.headers.get("Content-Length") or 0)
+            if n <= 0 or n > MAX_BODY:
+                return self.err(400, "That piece of the file doesn't fit.")
+            piece = self.rfile.read(n)   # read it before answering, even when refusing it
+            if offset != up["received"]:
+                return self.send(409, {"error": "Out of order.", "received": up["received"]})
+            if up["received"] + n > up["size"]:
+                return self.err(400, "That piece of the file doesn't fit.")
+            with open(up["tmp"], "ab") as f:
+                f.write(piece)
+            up["received"] += n
+            return self.send(200, {"received": up["received"]})
+        if method == "POST" and m.group(2):
+            if up["received"] != up["size"]:
+                return self.err(400, f"The upload is incomplete ({up['received']} of {up['size']} bytes).")
+            os.replace(up["tmp"], os.path.join(UPLOADS, up["kind"] + ".xlsx"))
+            save_excel_meta(up["kind"], {"name": up["name"], "size": up["size"], "uploadedAt": now_iso(), "uploadedBy": up["by"]})
+            _uploads.pop(m.group(1), None)
+            log(f"excel {up['kind']} uploaded by {up['by']}: {up['name']} ({up['size']} bytes)")
+            return self.send(200, {"ok": True, "files": excel_files()})
+        return self.err(404, "Not found")
 
     def static(self, p):
         rel = "index.html" if p == "/" else p.lstrip("/")

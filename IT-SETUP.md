@@ -26,7 +26,8 @@ The existing b2csales MySQL server can be used. It's a separate database.
 ```bash
 sudo mkdir -p /opt/callaudit && sudo chown deploy:deploy /opt/callaudit
 # copy api/, users.json and requirements.txt into /opt/callaudit (the deploy workflow does this; see step 5)
-sudo apt-get install -y python3-pip && sudo pip3 install -r /opt/callaudit/requirements.txt   # mysql-connector-python
+sudo apt-get install -y python3-pip && sudo pip3 install -r /opt/callaudit/requirements.txt   # mysql-connector-python, openpyxl
+sudo -u deploy mkdir -p /opt/callaudit/uploads   # uploaded Excel files (lead pool sources) are kept here
 
 sudo cp deploy/callaudit.env.example /etc/callaudit.env
 sudo nano /etc/callaudit.env          # CALL_AUDIT_SECRET = output of `openssl rand -hex 32`, MYSQL_PASS from step 1
@@ -97,7 +98,7 @@ Until these exist, each run is marked **skipped**, not failed.
 ## 6. Check
 
 1. `https://salesaudit.dreamfolks.co.in/` shows the **Sign in** screen.
-2. The admin signs in → **Settings** → **Upload leads.json** (from `tools/build_leads.py`).
+2. The admin signs in → **Settings → Lead pool**, picks the Talk Time Bands, Lead Data and Calling Data Excel files → **Upload and build**. Files of any size are sent in 768 KB pieces, so nginx's default 1 MB body limit doesn't matter. The server builds and masks the pool in the background, which takes a few minutes for a 40 MB Calling Data file.
 3. **Users** tab: add an auditor, **Save users file**, commit and push `users.json`.
 4. The auditor signs in, submits an audit, and sees it in **All Audits** and **Auditors**. A second audit on the same lead is refused.
 
