@@ -4,9 +4,11 @@ Stores audits, questionnaire settings and the lead pool in MySQL, and checks log
 users.json (Login ID + hashed password + tab rights), which is managed on the page's Users tab
 and deployed through git.
 
-Run:  python api/server.py            (listens on 127.0.0.1:8770; nginx proxies /api/ to it)
+Run:  python api/server.py            (listens on 0.0.0.0:8770; nginx proxies /api/ to it)
 
 Environment:
+  CALL_AUDIT_HOST      address to listen on (default 0.0.0.0, so nginx can reach it from another
+                       container or host; firewall port 8770 from the internet)
   CALL_AUDIT_PORT      port to listen on (default 8770)
   CALL_AUDIT_SECRET    long random string used to sign login tokens (required in production)
   CALL_AUDIT_USERS     path to users.json (default: users.json next to this folder)
@@ -21,6 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+HOST = os.getenv("CALL_AUDIT_HOST", "0.0.0.0")
 PORT = int(os.getenv("CALL_AUDIT_PORT", "8770"))
 SECRET = os.getenv("CALL_AUDIT_SECRET") or secrets.token_hex(32)
 USERS_FILE = os.getenv("CALL_AUDIT_USERS") or os.path.join(os.path.dirname(HERE), "users.json")
@@ -548,5 +551,5 @@ DBI = DB()
 
 if __name__ == "__main__":
     users()
-    log(f"Call Audit API on 127.0.0.1:{PORT} (db={DBI.kind}, users file={USERS_FILE})")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    log(f"Call Audit API on {HOST}:{PORT} (db={DBI.kind}, users file={USERS_FILE})")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
