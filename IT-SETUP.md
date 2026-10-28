@@ -110,7 +110,7 @@ Everything lives in the MySQL database `call_audit`. Back it up with the rest of
 
 | | Viewer | Auditor | Admin |
 |---|---|---|---|
-| Tabs | All Audits, Auditors, Coverage (as ticked) | + New Audit | Every tab, including Settings and Users |
+| Tabs | All Audits, Auditors, Coverage, Report (as ticked) | + New Audit | Every tab, including Report, Settings and Users |
 | Submit an audit | ✘ | ✔ | ✔ |
 | Edit, delete or download audits | ✘ | ✘ | ✔ |
 | Questionnaire lists, lead pool, users | ✘ | ✘ | ✔ |

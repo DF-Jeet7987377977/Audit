@@ -33,7 +33,7 @@ UPLOADS = os.getenv("CALL_AUDIT_UPLOADS") or os.path.join(os.path.dirname(HERE),
 EXCEL_KINDS = {"leads": "Audit leads (Talk Time Bands)", "leaddata": "Lead Data", "calling": "Calling Data"}
 TOKEN_HOURS = 12
 sys.path.insert(0, HERE)
-WORK_TABS = ("new", "all", "auditors", "coverage")
+WORK_TABS = ("new", "all", "auditors", "coverage", "report")
 MAX_BODY = 20 * 1024 * 1024
 if not os.getenv("CALL_AUDIT_SECRET"):
     print("WARNING: CALL_AUDIT_SECRET not set; logins end whenever the service restarts.", file=sys.stderr)

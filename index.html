@@ -13,6 +13,7 @@
   --bg:#f8f3ec; --card:#ffffff; --card2:#fbf1e4; --bdr:#e8d8c3; --bdr2:#d9c3a6;
   --tx:#2b1b0c; --mu:#7d6450; --p:#F7941D; --p2:#FAAF65; --p-ink:#a85b05; --on-p:#2b1606;
   --good:#0a8f72; --good-bg:#e3f5ef; --bad:#c43c3c; --bad-bg:#fbe8e6; --warn-bg:#fdf0dc;
+  --yes:#008a7b; --no:#b84a2a; --maybe:#d2c7bb;
   --hdr:linear-gradient(135deg,#2d1a06,#4a2c0c 55%,#2d1a06); --hdr-tx:#fff6ea; --hdr-mu:#d8b88f;
   --shadow:0 1px 2px rgba(60,35,10,.06),0 6px 18px rgba(60,35,10,.06); --focus:#a85b05;
   --f-display:'Playfair Display',Georgia,'Times New Roman',serif;
@@ -23,6 +24,7 @@
   --bg:#0d0904; --card:#1c1208; --card2:#261808; --bdr:#3d2410; --bdr2:#5a361a;
   --tx:#f5e0c8; --mu:#ad8d69; --p:#F7941D; --p2:#FAAF65; --p-ink:#FAAF65; --on-p:#1a0e03;
   --good:#00d4aa; --good-bg:#0b2a22; --bad:#ff6b6b; --bad-bg:#3a1414; --warn-bg:#33210a;
+  --yes:#2b9e8c; --no:#d86d4b; --maybe:#76634f;
   --hdr:linear-gradient(135deg,#1c1208,#2d1a06,#1c1208); --hdr-tx:#ffffff; --hdr-mu:#ad8c66;
   --shadow:none; --focus:#FAAF65; color-scheme:dark;
 }}
@@ -30,6 +32,7 @@
   --bg:#0d0904; --card:#1c1208; --card2:#261808; --bdr:#3d2410; --bdr2:#5a361a;
   --tx:#f5e0c8; --mu:#ad8d69; --p:#F7941D; --p2:#FAAF65; --p-ink:#FAAF65; --on-p:#1a0e03;
   --good:#00d4aa; --good-bg:#0b2a22; --bad:#ff6b6b; --bad-bg:#3a1414; --warn-bg:#33210a;
+  --yes:#2b9e8c; --no:#d86d4b; --maybe:#76634f;
   --hdr:linear-gradient(135deg,#1c1208,#2d1a06,#1c1208); --hdr-tx:#ffffff; --hdr-mu:#ad8c66;
   --shadow:none; --focus:#FAAF65; color-scheme:dark;
 }
@@ -142,6 +145,38 @@ td.r,th.r{text-align:right}
 .cov{display:grid;gap:4px}
 .bar{height:6px;border-radius:3px;background:var(--bdr);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--p)}
+/* report */
+.rp-nav{display:flex;gap:8px;flex-wrap:wrap}
+.rp-nav a{border:1px solid var(--bdr2);border-radius:20px;padding:4px 12px;color:var(--tx);text-decoration:none;font-size:13px;font-weight:600}
+.rp-nav a:hover{border-color:var(--p)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;background:var(--card2);min-width:0}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu)}
+.tile .v{font-family:var(--f-display);font-size:24px;font-weight:700;line-height:1.2}
+.tile .s{font-size:12.5px;color:var(--mu);overflow-wrap:anywhere}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--p-ink);font-weight:700}
+.rp-h{font-size:15px;font-family:var(--f-body);font-weight:700;margin:6px 0 2px}
+.rbars{display:grid;gap:6px}
+.rbar{display:grid;grid-template-columns:minmax(0,38%) minmax(40px,1fr) auto;gap:10px;align-items:center;font-size:13px}
+.rbar-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rbar-t{height:12px;background:var(--card2);border-radius:0 4px 4px 0}
+.rbar-t i{display:block;height:100%;background:var(--p);border-radius:0 4px 4px 0;min-width:2px}
+.rbar-v{white-space:nowrap;text-align:right;min-width:86px}
+.split{display:flex;gap:2px;height:14px;min-width:60px}
+.split i{display:block;height:100%}
+.split i:first-child{border-radius:4px 0 0 4px}.split i:last-child{border-radius:0 4px 4px 0}
+.split .y{background:var(--yes)}.split .n{background:var(--no)}.split .m{background:var(--maybe)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--mu)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--sw)}
+.splitrow{display:grid;grid-template-columns:minmax(0,38%) 1fr 48px;gap:10px;align-items:center;font-size:13px}
+.splitrow>span:last-child{text-align:right}
+.rbars+.tbl-wrap{margin-top:12px}
+details.cmt{border-top:1px solid var(--bdr);padding:6px 0}
+details.cmt summary{cursor:pointer;font-weight:600;font-size:13px}
+details.cmt ul{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+details.cmt li span{color:var(--mu);font-size:12px}
+.scrollbox{max-height:420px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;padding:8px 12px}
+@media (max-width:640px){.rbar,.splitrow{grid-template-columns:minmax(0,1fr) auto}.rbar-t,.splitrow .split{grid-column:1/-1;order:3}}
 .empty{padding:28px 16px;text-align:center;color:var(--mu)}
 .empty b{display:block;color:var(--tx);font-size:15px;margin-bottom:4px}
 
@@ -192,6 +227,7 @@ td.r,th.r{text-align:right}
       <button role="tab" id="tab-all" data-tab="all" aria-selected="false">All Audits</button>
       <button role="tab" id="tab-auditors" data-tab="auditors" aria-selected="false">Auditors</button>
       <button role="tab" id="tab-coverage" data-tab="coverage" aria-selected="false">Coverage</button>
+      <button role="tab" id="tab-report" data-tab="report" aria-selected="false">Report</button>
       <button role="tab" id="tab-settings" data-tab="settings" aria-selected="false" hidden>Settings</button>
       <button role="tab" id="tab-users" data-tab="users" aria-selected="false" hidden>Users</button>
     </nav>
@@ -264,6 +300,30 @@ td.r,th.r{text-align:right}
     </div>
   </section>
 
+  <!-- REPORT -->
+  <section id="view-report" class="stack" hidden>
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div style="min-width:0;flex:1 1 320px"><h2>Audit report</h2><p class="sub">What the audits say about Marketing, Agents and the Product. Percentages are shares of the audits in the current filter. Hover over a bar for the exact count.</p></div>
+        <button class="btn" id="btn-report-xlsx" type="button">Download report (.xlsx)</button>
+      </div>
+      <div class="filters">
+        <div><label class="lbl" for="rf-from">From</label><input type="date" id="rf-from"></div>
+        <div><label class="lbl" for="rf-to">To</label><input type="date" id="rf-to"></div>
+        <div><label class="lbl" for="rf-auditor">Auditor</label><select id="rf-auditor"></select></div>
+        <div><label class="lbl" for="rf-agent">Agent</label><select id="rf-agent"></select></div>
+        <div><label class="lbl" for="rf-cat">Lead category</label><select id="rf-cat"></select></div>
+        <div><label class="lbl" for="rf-band">Talk-time band</label><select id="rf-band"></select></div>
+        <div><label class="lbl" for="rf-src">Source</label><select id="rf-src"></select></div>
+      </div>
+      <nav class="rp-nav" aria-label="Report sections"><a href="#rp-marketing">Marketing</a><a href="#rp-agent">Agent</a><a href="#rp-product">Product</a></nav>
+      <div id="rp-summary"></div>
+    </div>
+    <div class="card stack" id="rp-marketing"></div>
+    <div class="card stack" id="rp-agent"></div>
+    <div class="card stack" id="rp-product"></div>
+  </section>
+
   <!-- SETTINGS -->
   <section id="view-settings" class="stack" hidden>
     <div class="card stack">
@@ -300,14 +360,14 @@ td.r,th.r{text-align:right}
         <div><label class="lbl" for="u-role">Starting access</label>
           <select id="u-role">
             <option value="Auditor">Auditor: New Audit, All Audits, Auditors, Coverage</option>
-            <option value="Viewer">Viewer: All Audits, Auditors, Coverage</option>
+            <option value="Viewer">Viewer: All Audits, Auditors, Coverage, Report</option>
             <option value="Admin">Admin: every tab</option>
           </select></div>
         <div style="align-self:end"><button class="btn" type="submit" id="u-add">Add user</button></div>
       </form>
       <span class="muted" id="u-msg" role="status"></span>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Name</th><th>Login ID</th><th>New Audit</th><th>All Audits</th><th>Auditors</th><th>Coverage</th><th>Admin</th><th>Active</th><th>Password</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Login ID</th><th>New Audit</th><th>All Audits</th><th>Auditors</th><th>Coverage</th><th>Report</th><th>Admin</th><th>Active</th><th>Password</th><th></th></tr></thead>
         <tbody id="users-body"></tbody>
       </table></div>
     </div>
@@ -357,7 +417,7 @@ function setTab(t) {
   if (S.allowed && !S.allowed.has(t)) t = [...S.allowed][0];
   S.tab = t;
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
-  for (const v of ["new", "all", "auditors", "coverage", "settings", "users"]) $("#view-" + v).hidden = v !== t;
+  for (const v of ["new", "all", "auditors", "coverage", "report", "settings", "users"]) $("#view-" + v).hidden = v !== t;
   try { localStorage.setItem("dfca-tab", t); } catch (e) {}
   render();
 }
@@ -384,7 +444,7 @@ async function loadPool() {
   if (res.status === 304) return;
   if (res.status === 404) {
     S.poolState = "empty";
-    $("#pool-line").textContent = S.me.isOwner ? "No lead pool yet. Upload leads.json in Settings." : "The lead pool hasn't been loaded yet. An admin adds it in Settings.";
+    $("#pool-line").textContent = S.me.isOwner ? "No lead pool yet. Upload the Excel files in Settings." : "The lead pool hasn't been loaded yet. An admin adds it in Settings.";
     render(); return;
   }
   if (!res.ok) throw new Error("lead pool " + res.status);
@@ -493,8 +553,8 @@ function dbErr(e) {
 function showGlobal(msg) { const b = $("#global-banner"); b.textContent = msg; b.hidden = false; }
 
 /* ---------- tabs a person may see ---------- */
-const WORK_TABS = [["new", "New Audit"], ["all", "All Audits"], ["auditors", "Auditors"], ["coverage", "Coverage"]];
-const ROLE_TABS = { Auditor: ["new", "all", "auditors", "coverage"], Viewer: ["all", "auditors", "coverage"], Admin: ["new", "all", "auditors", "coverage"] };
+const WORK_TABS = [["new", "New Audit"], ["all", "All Audits"], ["auditors", "Auditors"], ["coverage", "Coverage"], ["report", "Report"]];
+const ROLE_TABS = { Auditor: ["new", "all", "auditors", "coverage"], Viewer: ["all", "auditors", "coverage", "report"], Admin: ["new", "all", "auditors", "coverage", "report"] };
 function applyAccess(user) {
   const tabs = user.admin ? [...ROLE_TABS.Admin, "settings", "users"] : WORK_TABS.map(t => t[0]).filter(t => (user.tabs || []).includes(t));
   S.allowed = new Set(tabs);
@@ -565,7 +625,7 @@ function renderUsers() {
       <td>${box(u, "admin", u.admin, self, "Admin")}</td><td>${box(u, "active", u.active, self, "Active")}</td>
       <td data-pw="${esc(u.loginId)}"><button class="btn small" type="button" data-setpw="${esc(u.loginId)}">${u.password ? "Change" : "Set"}</button></td>
       <td>${self ? "" : `<button class="btn small danger" type="button" data-remove="${esc(u.loginId)}">Remove</button>`}</td></tr>`;
-  }).join("") : `<tr><td colspan="10"><div class="empty"><b>No users yet</b>Add the first person above.</div></td></tr>`;
+  }).join("") : `<tr><td colspan="11"><div class="empty"><b>No users yet</b>Add the first person above.</div></td></tr>`;
 }
 $("#users-body").addEventListener("change", e => {
   const el = e.target; if (!el.dataset.u || !S.me.isOwner) return;
@@ -638,6 +698,7 @@ function render() {
     if (S.tab === "all") renderAll();
     if (S.tab === "auditors") renderAuditors();
     if (S.tab === "coverage") renderCoverage();
+    if (S.tab === "report") renderReport();
     if (S.tab === "settings") renderSettings();
     if (S.tab === "users") renderUsers();
     if (S.openKey) renderDrawer();
@@ -1013,11 +1074,13 @@ function setOptions(sel, values, labelFn = v => v, all = "All") {
   sel.innerHTML = `<option value="">${all}</option>` + values.map(v => `<option value="${esc(v)}">${esc(labelFn(v))}</option>`).join("");
   if (values.includes(cur)) sel.value = cur;
 }
-function filtered() {
-  const q = $("#f-q").value.trim().toLowerCase();
-  const fa = $("#f-auditor").value, fg = $("#f-agent").value, fc = $("#f-cat").value, fb = $("#f-band").value, fs = $("#f-src").value;
-  const from = $("#f-from").value ? new Date($("#f-from").value + "T00:00:00").getTime() : 0;
-  const to = $("#f-to").value ? new Date($("#f-to").value + "T23:59:59").getTime() : Infinity;
+/* Filters shared by All Audits (prefix "f") and Report (prefix "rf"). */
+function filtered(p = "f") {
+  const v = id => ($(`#${p}-${id}`)?.value || "");
+  const q = v("q").trim().toLowerCase();
+  const fa = v("auditor"), fg = v("agent"), fc = v("cat"), fb = v("band"), fs = v("src");
+  const from = v("from") ? new Date(v("from") + "T00:00:00").getTime() : 0;
+  const to = v("to") ? new Date(v("to") + "T23:59:59").getTime() : Infinity;
   return auditList().filter(a => {
     const L = a.d.lead || {};
     if (fa && a.uid !== fa) return false;
@@ -1030,14 +1093,17 @@ function filtered() {
     return true;
   });
 }
+function fillFilterOptions(p, list) {
+  setOptions($(`#${p}-auditor`), [...S.auditors].filter(u => list.some(a => a.uid === u)), nameOf, "All auditors");
+  const uniq = f => [...new Set(list.map(f).filter(Boolean))].sort();
+  setOptions($(`#${p}-agent`), uniq(a => a.d.agentAudited), v => v, "All agents");
+  setOptions($(`#${p}-cat`), uniq(a => a.d.lead?.category), v => v, "All categories");
+  setOptions($(`#${p}-band`), uniq(a => a.d.lead?.talkBand).sort((x, y) => bandRank(x) - bandRank(y)), v => v, "All bands");
+  setOptions($(`#${p}-src`), uniq(a => a.d.lead?.source), v => v, "All sources");
+}
 function renderAll() {
   const list = auditList();
-  setOptions($("#f-auditor"), [...S.auditors].filter(u => list.some(a => a.uid === u)), nameOf, "All auditors");
-  const uniq = f => [...new Set(list.map(f).filter(Boolean))].sort();
-  setOptions($("#f-agent"), uniq(a => a.d.agentAudited), v => v, "All agents");
-  setOptions($("#f-cat"), uniq(a => a.d.lead?.category), v => v, "All categories");
-  setOptions($("#f-band"), uniq(a => a.d.lead?.talkBand).sort((x, y) => bandRank(x) - bandRank(y)), v => v, "All bands");
-  setOptions($("#f-src"), uniq(a => a.d.lead?.source), v => v, "All sources");
+  fillFilterOptions("f", list);
   const dups = [...auditsByPhone().entries()].filter(([, v]) => v.length > 1);
   const db = $("#dup-banner");
   db.hidden = !dups.length;
@@ -1121,6 +1187,240 @@ function renderCoverage() {
   wrap.outerHTML = gridHtml(auditList(), true).replace('<div class="tbl-wrap"><table>', '<div class="tbl-wrap"><table id="cov-table">');
   $("#cov-sub").textContent = `Leads audited out of the ${fmtN(S.pool.length)}-lead audit pool, by lead category and talk-time band. Lead data as of ${S.built || "…"}.`;
 }
+
+/* ---------- Report ----------
+   Everything is counted in the browser from the audits in the Report filter. No AI, no external calls.
+   Shares are of audits in scope; question rates (Q1-Q3) are of audits that answered that question. */
+const RF_IDS = ["rf-from", "rf-to", "rf-auditor", "rf-agent", "rf-cat", "rf-band", "rf-src"];
+RF_IDS.forEach(id => $("#" + id).addEventListener("change", () => renderReport(true)));
+const pctOf = (n, d) => d ? Math.round(n * 1000 / d) / 10 : 0;
+const fmtPct = (n, d) => d ? `${pctOf(n, d)}%` : "—";
+const titleCase = s => String(s || "").trim().replace(/\s+/g, " ").toLowerCase().replace(/(^|[\s(/-])\S/g, c => c.toUpperCase());
+const agentOf = a => a.d.agentAudited || a.d.lead?.agent || "Unknown";
+const segLabel = key => S.cfg.taxonomy?.sections?.find(s => s.key === key)?.label || key[0].toUpperCase() + key.slice(1) + " Issue";
+const hasIssue = (a, key) => { const x = a.d.answers?.issues?.[key]; return !!(x && x.l1 && x.l1 !== NO_ISSUE); };
+
+function issueStats(rows, key) {
+  const by = new Map(); let withIssue = 0, none = 0;
+  for (const a of rows) {
+    const x = a.d.answers?.issues?.[key];
+    if (!x || !x.l1) continue;
+    if (x.l1 === NO_ISSUE) { none++; continue; }
+    withIssue++;
+    const k = x.l2 || x.l1;
+    if (!by.has(k)) by.set(k, { label: k, l1: x.l1, n: 0, comments: [] });
+    const e = by.get(k); e.n++;
+    if (x.comment) e.comments.push({ text: x.comment, a });
+  }
+  return { withIssue, none, answered: withIssue + none, items: [...by.values()].sort((p, q) => q.n - p.n) };
+}
+const topIssue = (rows, key) => issueStats(rows, key).items[0]?.label || "—";
+function yesRate(rows, q) { let y = 0, n = 0; for (const a of rows) { const v = a.d.answers?.[q]; if (v) { n++; if (v === "Yes") y++; } } return { y, n }; }
+function split5(rows) { const c = { Yes: 0, No: 0, Maybe: 0 }; for (const a of rows) { const v = a.d.answers?.q5; if (v in c) c[v]++; } c.total = c.Yes + c.No + c.Maybe; return c; }
+function groupBy(rows, keyFn) {
+  const m = new Map();
+  for (const a of rows) for (const k of [].concat(keyFn(a))) { const kk = k || "Not given"; if (!m.has(kk)) m.set(kk, []); m.get(kk).push(a); }
+  return [...m.entries()].sort((p, q) => q[1].length - p[1].length || String(p[0]).localeCompare(String(q[0])));
+}
+
+function reportData(rows) {
+  const L = a => a.d.lead || {};
+  const iss = Object.fromEntries(["marketing", "agent", "product", "customer", "other"].map(k => [k, issueStats(rows, k)]));
+  const mktGroup = (keyFn, limit) => groupBy(rows, keyFn).slice(0, limit).map(([key, g]) => ({ key, n: g.length, mkt: g.filter(a => hasIssue(a, "marketing")).length, top: topIssue(g, "marketing"), q1: yesRate(g, "q1") }));
+  const cats = [...new Set([...(S.dicts?.cat || []), ...rows.map(a => L(a).category).filter(Boolean)])];
+  const bands = [...new Set([...(S.dicts?.band || []), ...rows.map(a => L(a).talkBand).filter(Boolean)])].sort((x, y) => bandRank(x) - bandRank(y));
+  const catBand = cats.map(c => ({ cat: c, cells: bands.map(b => { const g = rows.filter(a => L(a).category === c && L(a).talkBand === b); return { band: b, n: g.length, mkt: g.filter(a => hasIssue(a, "marketing")).length }; }) })).filter(r => r.cells.some(x => x.n));
+  const textList = q => rows.filter(a => (a.d.answers?.[q] || "").trim()).map(a => ({ text: a.d.answers[q].trim(), a }));
+  return {
+    n: rows.length, leads: new Set(rows.map(a => a.phone)).size,
+    q1: yesRate(rows, "q1"), q2: yesRate(rows, "q2"), q3: yesRate(rows, "q3"), q5: split5(rows), iss,
+    bySource: mktGroup(a => L(a).source, 50), byCampaign: mktGroup(a => L(a).campaign, 15), byCity: mktGroup(a => titleCase(L(a).city), 12),
+    byAd: groupBy(rows.filter(a => hasIssue(a, "marketing")), a => L(a).ad).slice(0, 10).map(([key, g]) => ({ key, adset: L(g[0]).adset || "", n: g.length, top: topIssue(g, "marketing") })),
+    bands, catBand,
+    agents: groupBy(rows, agentOf).map(([key, g]) => ({ key, n: g.length, iss: g.filter(a => hasIssue(a, "agent")).length, q1: yesRate(g, "q1"), q2: yesRate(g, "q2"), q3: yesRate(g, "q3"), top: topIssue(g, "agent") })),
+    services: groupBy(rows.filter(a => (a.d.answers?.q4 || []).length), a => a.d.answers.q4).map(([key, g]) => ({ key, n: g.length, q5: split5(g) })),
+    cities: groupBy(rows.filter(a => (a.d.answers?.q6 || "").trim()), a => titleCase(a.d.answers.q6)).slice(0, 15).map(([key, g]) => ({ key, n: g.length })),
+    why: textList("q12"), q3why: textList("q3Why"), q1why: textList("q1Why"),
+  };
+}
+
+/* ---- pieces ---- */
+function barsHtml(items, total, empty = "Nothing recorded in this filter.") {
+  if (!items.length) return `<p class="muted" style="margin:0">${empty}</p>`;
+  const max = Math.max(...items.map(i => i.n));
+  return `<div class="rbars">${items.map(i => `<div class="rbar" title="${esc(i.label)}: ${fmtN(i.n)} of ${fmtN(total)} audits (${fmtPct(i.n, total)})">
+    <span class="rbar-l">${esc(i.label)}</span><span class="rbar-t"><i style="width:${(i.n / max * 100).toFixed(1)}%"></i></span>
+    <span class="rbar-v num">${fmtN(i.n)} <span class="muted">· ${fmtPct(i.n, total)}</span></span></div>`).join("")}</div>`;
+}
+const LEGEND5 = `<div class="legend"><span style="--sw:var(--yes)">Yes</span><span style="--sw:var(--no)">No</span><span style="--sw:var(--maybe)">Maybe</span></div>`;
+function splitHtml(c) {
+  if (!c.total) return `<span class="muted">—</span>`;
+  const seg = (k, cls) => c[k] ? `<i class="${cls}" style="flex:${c[k]}"></i>` : "";
+  return `<div class="split" role="img" aria-label="Yes ${c.Yes}, No ${c.No}, Maybe ${c.Maybe}" title="Yes ${c.Yes} (${fmtPct(c.Yes, c.total)}) · No ${c.No} (${fmtPct(c.No, c.total)}) · Maybe ${c.Maybe} (${fmtPct(c.Maybe, c.total)})">${seg("Yes", "y")}${seg("No", "n")}${seg("Maybe", "m")}</div>`;
+}
+function tableHtml(head, rows, empty = "Nothing recorded in this filter.") {
+  if (!rows.length) return `<p class="muted" style="margin:0">${empty}</p>`;
+  // a column is numeric (right-aligned) when every cell starts with a digit or a dash
+  const numeric = head.map((_, i) => i > 0 && rows.every(r => /^\s*(<[^>]+>)*\s*[\d—-]/.test(String(r[i]))));
+  return `<div class="tbl-wrap"><table><thead><tr>${head.map((h, i) => `<th${numeric[i] ? ' class="r"' : ""}>${h}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td${numeric[i] ? ' class="r num"' : ""}>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+const who = a => `${esc(agentOf(a))} · ${esc(a.d.lead?.category || "")} · ${esc(fmtTs(a.d.ts, false))}`;
+function commentsHtml(stats, title = "What auditors wrote") {
+  const withC = stats.items.filter(i => i.comments.length);
+  if (!withC.length) return "";
+  return `<div><p class="rp-h">${title}</p>${withC.map(i => `<details class="cmt"><summary>${esc(i.label)} <span class="muted">(${i.comments.length})</span></summary>
+    <ul>${i.comments.slice(0, 200).map(c => `<li>${esc(c.text)} <span>— ${who(c.a)}</span></li>`).join("")}</ul></details>`).join("")}</div>`;
+}
+function textDetails(list, title) {
+  if (!list.length) return "";
+  return `<details class="cmt"><summary>${title} <span class="muted">(${list.length})</span></summary><ul>${list.slice(0, 300).map(c => `<li>${esc(c.text)} <span>— ${who(c.a)}</span></li>`).join("")}</ul></details>`;
+}
+const issueBars = (st, total) => barsHtml(st.items.map(i => ({ label: i.label, n: i.n })), total);
+const tile = (k, v, s = "") => `<div class="tile"><div class="k">${k}</div><div class="v num">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;
+
+/* ---- render ---- */
+let reportSig = "";
+function renderReport(force) {
+  const list = auditList();
+  fillFilterOptions("rf", list);
+  const rows = filtered("rf");
+  const sig = RF_IDS.map(id => $("#" + id).value).join("|") + "#" + rows.map(a => a.key + (a.d.updatedAt || "")).join(",");
+  if (!force && sig === reportSig) return;
+  reportSig = sig;
+  const R = reportData(rows), n = R.n;
+  $("#btn-report-xlsx").disabled = !n;
+  if (!n) {
+    $("#rp-summary").innerHTML = `<div class="empty"><b>${list.length ? "No audits match these filters" : "No audits yet"}</b>${list.length ? "Clear a filter to see the report." : "The report fills in as audits are submitted."}</div>`;
+    for (const id of ["rp-marketing", "rp-agent", "rp-product"]) $("#" + id).innerHTML = "";
+    return;
+  }
+  const mk = R.iss.marketing, ag = R.iss.agent, pr = R.iss.product, cu = R.iss.customer, ot = R.iss.other;
+  $("#rp-summary").innerHTML = `<div class="tiles">
+    ${tile("Audits in this report", fmtN(n), `${fmtN(R.leads)} leads · of ${fmtN(list.length)} audits in total`)}
+    ${tile("Interested initially", fmtPct(R.q1.y, R.q1.n), `Q1, ${fmtN(R.q1.y)} of ${fmtN(R.q1.n)} said Yes`)}
+    ${tile("Understood DF Club", fmtPct(R.q2.y, R.q2.n), `Q2, ${fmtN(R.q2.y)} of ${fmtN(R.q2.n)}`)}
+    ${tile("Complete product pitched", fmtPct(R.q3.y, R.q3.n), `Q3, ${fmtN(R.q3.y)} of ${fmtN(R.q3.n)}`)}
+    <div class="tile"><div class="k">Would buy a single service</div><div style="margin:8px 0 6px">${splitHtml(R.q5)}</div><div class="s num">Yes ${fmtPct(R.q5.Yes, R.q5.total)} · No ${fmtPct(R.q5.No, R.q5.total)} · Maybe ${fmtPct(R.q5.Maybe, R.q5.total)}</div></div>
+    ${tile("Top issues", "", `<b>Marketing:</b> ${esc(mk.items[0]?.label || "—")}<br><b>Agent:</b> ${esc(ag.items[0]?.label || "—")}<br><b>Product:</b> ${esc(pr.items[0]?.label || "—")}`)}
+  </div>`;
+
+  $("#rp-marketing").innerHTML = `<div><p class="eyebrow">Marketing</p><h2>What's going wrong with the leads</h2>
+      <p class="sub">${fmtN(mk.withIssue)} of ${fmtN(n)} audits (${fmtPct(mk.withIssue, n)}) found a marketing issue. ${fmtN(mk.none)} said no marketing issue.</p></div>
+    <div><p class="rp-h">Marketing issues</p>${issueBars(mk, n)}</div>
+    <div><p class="rp-h">By source</p>${tableHtml(["Source", "Audits", "Marketing issue", "Interested initially", "Top marketing issue"],
+      R.bySource.map(r => [esc(r.key), fmtN(r.n), fmtPct(r.mkt, r.n), fmtPct(r.q1.y, r.q1.n), esc(r.top)]))}</div>
+    <div><p class="rp-h">By campaign <span class="muted">(top 15 by audits)</span></p>${tableHtml(["Campaign", "Audits", "Marketing issue", "Top marketing issue"],
+      R.byCampaign.map(r => [esc(r.key), fmtN(r.n), fmtPct(r.mkt, r.n), esc(r.top)]))}</div>
+    <div><p class="rp-h">Ads with the most marketing issues</p>${tableHtml(["Ad", "Ad set", "Marketing issues", "Top issue"],
+      R.byAd.map(r => [esc(r.key), esc(r.adset || "—"), fmtN(r.n), esc(r.top)]))}</div>
+    <div class="grid2">
+      <div style="min-width:0"><p class="rp-h">By city (CRM) <span class="muted">(top 12)</span></p>${tableHtml(["City", "Audits", "Marketing issue"], R.byCity.map(r => [esc(r.key), fmtN(r.n), fmtPct(r.mkt, r.n)]))}</div>
+      <div style="min-width:0"><p class="rp-h">Marketing issue rate by category and talk time</p>${tableHtml(["Lead category", ...R.bands.map(esc)],
+        R.catBand.map(r => [esc(r.cat), ...r.cells.map(c => c.n ? `${fmtPct(c.mkt, c.n)} <span class="muted">(${c.n})</span>` : `<span class="muted">—</span>`)]))}</div>
+    </div>
+    ${commentsHtml(mk)}`;
+
+  $("#rp-agent").innerHTML = `<div><p class="eyebrow">Agent</p><h2>What happened on the calls</h2>
+      <p class="sub">${fmtN(ag.withIssue)} of ${fmtN(n)} audits (${fmtPct(ag.withIssue, n)}) found an agent issue. The complete product was pitched on ${fmtPct(R.q3.y, R.q3.n)} of audited leads.</p></div>
+    <div><p class="rp-h">Agents</p>${tableHtml(["Agent", "Audits", "Agent issue", "Complete pitch", "Customer understood", "Interested initially", "Top agent issue"],
+      R.agents.map(r => [esc(r.key), fmtN(r.n), fmtPct(r.iss, r.n), fmtPct(r.q3.y, r.q3.n), fmtPct(r.q2.y, r.q2.n), fmtPct(r.q1.y, r.q1.n), esc(r.top)]))}</div>
+    <div class="grid2">
+      <div style="min-width:0"><p class="rp-h">${esc(segLabel("agent"))}s</p>${issueBars(ag, n)}</div>
+      <div style="min-width:0"><p class="rp-h">${esc(segLabel("other"))}s <span class="muted">(call quality)</span></p>${issueBars(ot, n)}</div>
+    </div>
+    ${commentsHtml(ag)}${commentsHtml(ot, "Other issues: what auditors wrote")}
+    ${textDetails(R.q3why, "Why the complete product wasn't pitched (Q3)")}${textDetails(R.q1why, "Why the customer wasn't interested at first (Q1)")}`;
+
+  $("#rp-product").innerHTML = `<div><p class="eyebrow">Product</p><h2>What customers need</h2>
+      <p class="sub">${fmtN(pr.withIssue)} audits (${fmtPct(pr.withIssue, n)}) found a product issue and ${fmtN(cu.withIssue)} (${fmtPct(cu.withIssue, n)}) a customer issue.</p></div>
+    <div><p class="rp-h">Services customers were most interested in (Q4)</p>${barsHtml(R.services.map(s => ({ label: s.key, n: s.n })), n)}</div>
+    <div><p class="rp-h">Would they buy that service on its own? (Q5)</p>${LEGEND5}
+      <div class="rbars" style="margin-top:8px">
+        <div class="splitrow"><b>All audits</b>${splitHtml(R.q5)}<span class="num muted">${fmtN(R.q5.total)}</span></div>
+        ${R.services.map(s => `<div class="splitrow"><span class="rbar-l">${esc(s.key)}</span>${splitHtml(s.q5)}<span class="num muted">${fmtN(s.q5.total)}</span></div>`).join("")}
+      </div>
+      ${tableHtml(["Service", "Interested", "Yes", "No", "Maybe"], R.services.map(s => [esc(s.key), fmtN(s.n), fmtPct(s.q5.Yes, s.q5.total), fmtPct(s.q5.No, s.q5.total), fmtPct(s.q5.Maybe, s.q5.total)]))}</div>
+    <div class="grid2">
+      <div style="min-width:0"><p class="rp-h">${esc(segLabel("product"))}s</p>${issueBars(pr, n)}</div>
+      <div style="min-width:0"><p class="rp-h">${esc(segLabel("customer"))}s <span class="muted">(customer needs)</span></p>${issueBars(cu, n)}</div>
+    </div>
+    <div><p class="rp-h">Target cities (Q6) <span class="muted">(top 15)</span></p>${barsHtml(R.cities.map(c => ({ label: c.key, n: c.n })), n)}</div>
+    ${commentsHtml(pr)}${commentsHtml(cu, "Customer issues: what auditors wrote")}
+    <div><p class="rp-h">Why the customer didn't buy (Q12) <span class="muted num">(${fmtN(R.why.length)})</span></p>
+      <input type="search" id="rp-why-q" placeholder="Search these answers, e.g. price, card, lounge" aria-label="Search why the customer didn't buy" style="margin-bottom:8px">
+      <div class="scrollbox"><ul id="rp-why-list" style="margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px"></ul></div></div>`;
+  S.reportWhy = R.why;
+  renderWhy();
+  $("#rp-why-q").addEventListener("input", renderWhy);
+}
+function renderWhy() {
+  const q = ($("#rp-why-q")?.value || "").trim().toLowerCase();
+  const items = (S.reportWhy || []).filter(w => !q || w.text.toLowerCase().includes(q));
+  $("#rp-why-list").innerHTML = items.length ? items.map(w => `<li>${esc(w.text)} <span class="muted" style="font-size:12px">— ${who(w.a)}</span></li>`).join("")
+    : `<li class="muted" style="list-style:none">${q ? "No answers contain that." : "No answers yet."}</li>`;
+}
+
+/* ---- Excel download: aggregates and comments only, never phone numbers or Lead IDs ---- */
+function reportFilterText() {
+  const parts = [];
+  const lab = { "rf-auditor": "Auditor", "rf-agent": "Agent", "rf-cat": "Category", "rf-band": "Band", "rf-src": "Source" };
+  if ($("#rf-from").value || $("#rf-to").value) parts.push(`Dates ${$("#rf-from").value || "start"} to ${$("#rf-to").value || "today"}`);
+  for (const [id, l] of Object.entries(lab)) { const sel = $("#" + id); if (sel.value) parts.push(`${l}: ${sel.options[sel.selectedIndex].text}`); }
+  return parts.join("; ") || "All audits";
+}
+$("#btn-report-xlsx").addEventListener("click", async () => {
+  const btn = $("#btn-report-xlsx"); btn.disabled = true;
+  try {
+    await loadXlsx();
+    const rows = filtered("rf"), R = reportData(rows), n = R.n, P = (a, b) => pctOf(a, b);
+    const issueRows = st => [["Issue", "Level 1", "Audits", "% of audits"], ...st.items.map(i => [i.label, i.l1, i.n, P(i.n, n)])];
+    const sheets = {
+      Summary: [["DreamFolks Call Audit report"], ["Filter", reportFilterText()], ["Generated", fmtTs(Date.now())], [],
+        ["Audits", n], ["Leads covered", R.leads],
+        ["Interested initially (Q1 Yes) %", P(R.q1.y, R.q1.n)], ["Understood DF Club (Q2 Yes) %", P(R.q2.y, R.q2.n)], ["Complete product pitched (Q3 Yes) %", P(R.q3.y, R.q3.n)],
+        ["Would buy a single service (Q5)", "Yes", R.q5.Yes, "No", R.q5.No, "Maybe", R.q5.Maybe],
+        ["Audits with a marketing issue %", P(R.iss.marketing.withIssue, n)], ["Audits with an agent issue %", P(R.iss.agent.withIssue, n)],
+        ["Audits with a product issue %", P(R.iss.product.withIssue, n)], ["Audits with a customer issue %", P(R.iss.customer.withIssue, n)],
+        ["Top marketing issue", R.iss.marketing.items[0]?.label || ""], ["Top agent issue", R.iss.agent.items[0]?.label || ""],
+        ["Top product issue", R.iss.product.items[0]?.label || ""], ["Top customer issue", R.iss.customer.items[0]?.label || ""]],
+      Marketing: [["Marketing issues"], ...issueRows(R.iss.marketing), [],
+        ["By source"], ["Source", "Audits", "With marketing issue", "Marketing issue %", "Interested initially %", "Top marketing issue"], ...R.bySource.map(r => [r.key, r.n, r.mkt, P(r.mkt, r.n), P(r.q1.y, r.q1.n), r.top]), [],
+        ["By campaign (top 15)"], ["Campaign", "Audits", "With marketing issue", "Marketing issue %", "Top marketing issue"], ...R.byCampaign.map(r => [r.key, r.n, r.mkt, P(r.mkt, r.n), r.top]), [],
+        ["Ads with the most marketing issues"], ["Ad", "Ad set", "Marketing issues", "Top issue"], ...R.byAd.map(r => [r.key, r.adset, r.n, r.top]), [],
+        ["By city (CRM, top 12)"], ["City", "Audits", "With marketing issue", "Marketing issue %"], ...R.byCity.map(r => [r.key, r.n, r.mkt, P(r.mkt, r.n)]), [],
+        ["By lead category and talk-time band"], ["Lead category", "Talk-time band", "Audits", "With marketing issue", "Marketing issue %"],
+        ...R.catBand.flatMap(r => r.cells.filter(c => c.n).map(c => [r.cat, c.band, c.n, c.mkt, P(c.mkt, c.n)]))],
+      Agents: [["Agents"], ["Agent", "Audits", "With agent issue", "Agent issue %", "Complete pitch %", "Customer understood %", "Interested initially %", "Top agent issue"],
+        ...R.agents.map(r => [r.key, r.n, r.iss, P(r.iss, r.n), P(r.q3.y, r.q3.n), P(r.q2.y, r.q2.n), P(r.q1.y, r.q1.n), r.top]), [],
+        ["Agent issues"], ...issueRows(R.iss.agent), [], ["Other issues (call quality)"], ...issueRows(R.iss.other)],
+      Product: [["Services of interest (Q4) and would they buy it alone (Q5)"], ["Service", "Interested", "% of audits", "Q5 Yes", "Q5 No", "Q5 Maybe"],
+        ...R.services.map(s => [s.key, s.n, P(s.n, n), s.q5.Yes, s.q5.No, s.q5.Maybe]), [],
+        ["Product issues"], ...issueRows(R.iss.product), [], ["Customer issues (needs)"], ...issueRows(R.iss.customer), [],
+        ["Target cities (Q6, top 15)"], ["City", "Audits"], ...R.cities.map(c => [c.key, c.n])],
+    };
+    const meta = a => [fmtTs(a.d.ts, false), nameOf(a.uid), agentOf(a), a.d.lead?.category || "", a.d.lead?.source || ""];
+    const comments = [["Part", "Issue level 1", "Issue level 2", "Comment", "Date", "Auditor", "Agent", "Lead category", "Source"]];
+    for (const k of ["marketing", "agent", "other", "product", "customer"]) for (const i of R.iss[k].items) for (const c of i.comments) comments.push([segLabel(k), i.l1, i.label, c.text, ...meta(c.a)]);
+    for (const [lab, list] of [["Why not bought (Q12)", R.why], ["Why not fully pitched (Q3)", R.q3why], ["Why not interested at first (Q1)", R.q1why]])
+      for (const c of list) comments.push([lab, "", "", c.text, ...meta(c.a)]);
+    sheets.Comments = comments;
+    const wb = XLSX.utils.book_new();
+    for (const [name, aoa] of Object.entries(sheets)) {
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!cols"] = Array.from({ length: Math.max(...aoa.map(r => r.length)) }, (_, i) => ({ wch: i === 0 || (name === "Comments" && i === 3) ? 48 : 18 }));
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    }
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }), d = new Date();
+    const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    const link = document.createElement("a");
+    link.href = url; link.download = `Call Audit Report ${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}.xlsx`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast(`Report downloaded (${fmtN(n)} audits).`);
+  } catch (e) { toast("The report didn't download. Try again."); }
+  finally { btn.disabled = false; }
+});
 
 /* ---------- Settings ---------- */
 let settingsDirty = false;

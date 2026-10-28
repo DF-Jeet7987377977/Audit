@@ -1,6 +1,6 @@
 # DreamFolks Call Audit
 
-Shared, lead-level audit tool for obsolete and rejected sales leads. Auditors look up a lead by phone number or Lead ID, listen to its calls in the calling tool, and record one audit: a call synopsis, the questionnaire, and Agent / Customer / Marketing / Product / Other issues. Admins decide on the **Users** tab who can open the tool and which tabs each person sees. The presets are Auditor, Viewer and Admin, and tabs can be ticked per person. Only admins edit, delete, download, or change settings.
+Shared, lead-level audit tool for obsolete and rejected sales leads. Auditors look up a lead by phone number or Lead ID, listen to its calls in the calling tool, and record one audit: a call synopsis, the questionnaire, and Agent / Customer / Marketing / Product / Other issues. The **Report** tab turns the audits into Marketing, Agent and Product views: issue rankings, breakdowns by source, campaign, ad and agent, Yes/No/Maybe splits and grouped comments, with filters and an Excel download that has no phone numbers. It's computed in the browser, with no AI or external calls. Admins decide on the **Users** tab who can open the tool and which tabs each person sees. The presets are Auditor, Viewer and Admin, and tabs can be ticked per person. Only admins edit, delete, download, or change settings.
 
 - `index.html`: the app (static HTML, Login ID + password, talks to `/api`)
 - `config.js`: where the `/api` helper is
