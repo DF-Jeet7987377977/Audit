@@ -224,7 +224,7 @@ def save_excel_meta(kind, info):
         json.dump(meta, f, indent=1)
 
 
-_ai = {"state": "idle"}            # AI categorisation run: idle | running | done | error
+_ai = {"state": "idle"}            # comment categorisation run: idle | running | done | error
 
 
 def run_ai(who):
@@ -506,9 +506,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, {"tags": [{"auditId": r["audit_id"], "field": r["field"], "theme": r["theme"], "segment": r["segment"]} for r in rows]})
         if p == "/api/ai/run" and method == "POST":
             if not me["admin"]:
-                return self.err(403, "Only admins can run the AI categorisation.")
+                return self.err(403, "Only admins can run the comment categorisation.")
             if not ai.configured():
-                return self.err(400, "AI isn't set up yet: add ANTHROPIC_API_KEY to /etc/callaudit.env and restart the service.")
+                return self.err(400, "Comment categorisation isn't available.")
             with _build_lock:
                 if _ai.get("state") == "running":
                     return self.err(409, "Categorisation is already running.")

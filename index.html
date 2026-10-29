@@ -316,14 +316,14 @@ details.cmt li span{color:var(--mu);font-size:12px}
         <div><label class="lbl" for="rf-band">Talk-time band</label><select id="rf-band"></select></div>
         <div><label class="lbl" for="rf-src">Source</label><select id="rf-src"></select></div>
       </div>
-      <nav class="rp-nav" aria-label="Report sections"><a href="#rp-questions">Questions</a><a href="#rp-ai">AI themes</a><a href="#rp-marketing">Marketing</a><a href="#rp-agent">Agent</a><a href="#rp-product">Product</a></nav>
+      <nav class="rp-nav" aria-label="Report sections"><a href="#rp-questions">Questions</a><a href="#rp-ai">Comment themes</a><a href="#rp-marketing">Marketing</a><a href="#rp-agent">Agent</a><a href="#rp-product">Product</a></nav>
       <div id="rp-summary"></div>
     </div>
     <div class="card stack" id="rp-questions"></div>
     <div class="card stack" id="rp-ai">
       <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div style="min-width:0;flex:1 1 320px"><p class="eyebrow">AI themes</p><h2>What the comments are about</h2>
-          <p class="sub">Claude reads every free-text answer (call synopsis, the "why" answers and the issue comments) and gives each one a theme and a segment. Only the comment text is sent, with numbers and emails blanked out. Categories are saved, so only new or edited comments are sent again.</p></div>
+        <div style="min-width:0;flex:1 1 320px"><p class="eyebrow">Comment themes</p><h2>What the comments are about</h2>
+          <p class="sub">The audit server reads every free-text answer (call synopsis, the "why" answers and the issue comments) and gives each one a theme and a segment, using built-in keyword rules in English, Hindi and Hinglish. It runs on our own server: nothing is sent outside and there is no cost. Categories are saved, so a later run only looks at new or edited comments.</p></div>
         <button class="btn primary" id="btn-ai-run" type="button" hidden>Categorise new comments</button>
       </div>
       <p class="muted" id="rp-ai-status" role="status" style="margin:0">Loading…</p>
@@ -1210,7 +1210,7 @@ function renderCoverage() {
 }
 
 /* ---------- Report ----------
-   Everything is counted in the browser from the audits in the Report filter. No AI, no external calls.
+   Everything is counted in the browser from the audits in the Report filter. No external calls.
    Shares are of audits in scope; question rates (Q1-Q3) are of audits that answered that question. */
 const RF_IDS = ["rf-from", "rf-to", "rf-auditor", "rf-agent", "rf-cat", "rf-band", "rf-src"];
 RF_IDS.forEach(id => $("#" + id).addEventListener("change", () => renderReport(true)));
@@ -1421,7 +1421,7 @@ function renderQuestions(rows, R) {
   S.reportQ = Q;
 }
 
-/* ---------- Report: AI themes ---------- */
+/* ---------- Report: comment themes ---------- */
 const AI_FIELD_LABEL = { synopsis: "Call synopsis", q1Why: "Why not interested at first (Q1)", q3Why: "Why not fully pitched (Q3)", q12: "Why the customer didn't buy (Q12)" };
 const aiFieldLabel = f => AI_FIELD_LABEL[f] || (f.startsWith("issue:") ? segLabel(f.slice(6)) + " comment" : f);
 function commentText(a, f) {
@@ -1463,9 +1463,9 @@ function renderAiCard() {
   const rows = S.reportRows || [], st = S.ai?.st, run = st?.run || {};
   const btn = $("#btn-ai-run");
   btn.hidden = !S.me.isOwner; btn.disabled = !st?.configured || run.state === "running";
-  let status = S.ai?.error ? "Couldn't load the AI categories: " + S.ai.error
+  let status = S.ai?.error ? "Couldn't load the comment themes: " + S.ai.error
     : !S.ai ? "Loading…"
-    : !st.configured ? "AI isn't switched on yet. IT adds an Anthropic API key to the audit server (IT-SETUP.md), then an admin can run it."
+    : !st.configured ? "Comment themes aren't available on the server yet. IT copies the latest api/ai.py and restarts the service."
     : run.state === "running" ? `${run.message || "Categorising…"} (${fmtN(run.done || 0)} of ${fmtN(run.total || 0)})`
     : run.state === "error" ? run.message
     : run.state === "done" ? `${run.message} Last run ${fmtTs(Date.parse(run.finishedAt))}.`
@@ -1476,7 +1476,7 @@ function renderAiCard() {
   const items = all.filter(i => !field || (field === "issue:" ? i.f.startsWith("issue:") : i.f === field));
   const body = $("#rp-ai-body");
   if (!all.length) {
-    body.innerHTML = `<div class="empty"><b>No AI categories yet</b>${untagged ? `${fmtN(untagged)} comments in this filter are waiting to be categorised.${S.me.isOwner ? " Click Categorise new comments." : " An admin runs the categorisation."}` : "No free-text comments in this filter."}</div>`;
+    body.innerHTML = `<div class="empty"><b>No comment themes yet</b>${untagged ? `${fmtN(untagged)} comments in this filter are waiting to be categorised.${S.me.isOwner ? " Click Categorise new comments." : " An admin runs the categorisation."}` : "No free-text comments in this filter."}</div>`;
     return;
   }
   const byTheme = groupBy(items, i => i.theme), bySeg = groupBy(items, i => i.segment);
@@ -1497,7 +1497,7 @@ $("#btn-ai-run").addEventListener("click", async () => {
   catch (e) { toast(e.message); $("#btn-ai-run").disabled = false; }
 });
 
-/* Blank out phone numbers and emails an auditor typed into a comment (same rule as the AI masking on the server). */
+/* Blank out phone numbers and emails an auditor typed into a comment (used in the Excel download). */
 const maskText = t => String(t).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email]").replace(/\d[\d\s-]{6,}\d/g, "[number]");
 /* ---- Excel download: aggregates and comments only, never phone numbers or Lead IDs ---- */
 function reportFilterText() {
@@ -1551,10 +1551,10 @@ $("#btn-report-xlsx").addEventListener("click", async () => {
       ["Q6. Target city", "Audits", "% of audits"], ...R.cities.map(c => [c.key, c.n, P(c.n, n)]), [],
       ...Q.issues.flatMap(x => [[x.label, "Audits", "% of answered"], ...x.items.map(i => [i.label, i.n, P(i.n, x.st.answered)]), []]),
       ["Free-text answers", "Answered", "% of audits"], ...Q.texts.map(t => [t.label, t.n, P(t.n, n)])];
-    // AI themes (only when categories exist)
+    // Comment themes (only when categories exist)
     const { items: aiRows } = aiItems(rows);
     if (aiRows.length) {
-      sheets["AI themes"] = [["Theme", "Comments", "% of categorised comments"], ...groupBy(aiRows, i => i.theme).map(([k, g]) => [k, g.length, P(g.length, aiRows.length)]), [],
+      sheets["Comment themes"] = [["Theme", "Comments", "% of categorised comments"], ...groupBy(aiRows, i => i.theme).map(([k, g]) => [k, g.length, P(g.length, aiRows.length)]), [],
         ["Segment", "Comments", "% of categorised comments"], ...groupBy(aiRows, i => i.segment).map(([k, g]) => [k, g.length, P(g.length, aiRows.length)]), [],
         ["Theme", "Segment", "Answer", "Comment", "Date", "Auditor", "Agent", "Lead category", "Source"],
         ...aiRows.map(i => [i.theme, i.segment, aiFieldLabel(i.f), maskText(i.text), ...meta(i.a)])];

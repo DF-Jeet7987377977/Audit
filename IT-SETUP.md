@@ -42,23 +42,12 @@ curl -s http://127.0.0.1:8770/api/ping      # -> {"ok": true, "db": "mysql", "us
 `Restart=always` brings the helper back after a crash or reboot. The b2csales helper has been down (502) since August because nothing restarted it, so please keep this setting.
 If you prefer Docker like b2csales, run `python3 api/server.py` in a `python:3.11-slim` image with the same environment variables and `restart: unless-stopped`.
 
-### AI comment categorisation (Report → AI themes)
+### Comment themes (Report tab)
 
-The Report tab can have Claude (Anthropic) give every free-text audit comment a theme. An admin starts each run from the page.
-- **Data sent:** only the comment text, with numbers and emails blanked out. No phone numbers, Lead IDs or names.
-- **Not re-sent:** results are saved in the `ai_tags` table, so a comment is sent again only if it changes.
-
-To switch it on:
-
-```bash
-sudo pip3 install -r /opt/callaudit/requirements.txt        # adds the anthropic package
-echo 'ANTHROPIC_API_KEY=sk-ant-...' | sudo tee -a /etc/callaudit.env   # key from console.anthropic.com
-sudo systemctl restart callaudit-api
-```
-
-- **Model:** Claude Opus 5.5, unless `CALL_AUDIT_AI_MODEL` is set. Automatic fallback is on: if the model declines a batch, another model categorises it.
-- **Cost:** roughly US$3–5 per 1,000 audits categorised.
-- **Without a key:** the AI section just says it isn't switched on yet. Everything else works.
+The Report tab groups every free-text audit comment into a theme and a segment. An admin starts each run from the page.
+- **No cost, nothing sent outside:** it uses keyword rules (English, Hindi and Hinglish) in `api/ai.py` that run on this server. No API key, no extra package.
+- **Not redone:** results are saved in the `ai_tags` table, so a later run only looks at new or edited comments.
+- **Better categories:** add words to `RULES` in `api/ai.py` and bump `RULES_VERSION`; the next run re-tags everything.
 
 ## 3. nginx
 
