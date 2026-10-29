@@ -105,6 +105,8 @@ class DB:
         self.run(f"CREATE TABLE IF NOT EXISTS settings (k VARCHAR(64) PRIMARY KEY, v {text} NOT NULL, updated_at VARCHAR(32), updated_by VARCHAR(255)){tail}")
         self.run(f"CREATE TABLE IF NOT EXISTS lead_pool (id INT PRIMARY KEY, content {text} NOT NULL, rows_count INT, updated_at VARCHAR(32), updated_by VARCHAR(255)){tail}")
         self.run(f"CREATE TABLE IF NOT EXISTS app_users (id INT PRIMARY KEY, content {text} NOT NULL, updated_at VARCHAR(32), updated_by VARCHAR(255)){tail}")
+        self.run(f"""CREATE TABLE IF NOT EXISTS ai_tags (audit_id INT NOT NULL, field VARCHAR(40) NOT NULL, text_hash CHAR(40) NOT NULL,
+            theme VARCHAR(120) NOT NULL, segment VARCHAR(20) NOT NULL, tagged_at VARCHAR(32), PRIMARY KEY (audit_id, field)){tail}""")
 
 
 def now_iso():
@@ -220,6 +222,20 @@ def save_excel_meta(kind, info):
     meta[kind] = info
     with open(os.path.join(UPLOADS, "files.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=1)
+
+
+_ai = {"state": "idle"}            # AI categorisation run: idle | running | done | error
+
+
+def run_ai(who):
+    import ai
+    try:
+        rows = DBI.run("SELECT id, record FROM audits", fetch=True)
+        audits = [{"id": r["id"], "record": json.loads(r["record"])} for r in rows]
+        ai.run(DBI, audits, who, _ai, now_iso)
+    except Exception as e:
+        log(f"ai run failed: {e!r}")
+        _ai.update(state="error", message=f"Categorising stopped: {e}", finishedAt=now_iso())
 
 
 def run_build(who):
@@ -338,6 +354,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not me["admin"]:
                     return self.err(403, "Only admins can replace the lead pool.")
                 return self.put_pool(me)
+            if p.startswith("/api/ai/"):
+                if not (me["admin"] or "report" in me["tabs"]):
+                    return self.err(403, "You don't have the Report tab.")
+                return self.ai_route(me, method, p)
             if p.startswith("/api/excel"):
                 if not me["admin"]:
                     return self.err(403, "Only admins can upload lead files.")
@@ -475,6 +495,28 @@ class Handler(BaseHTTPRequestHandler):
             return self.err(400, "This isn't a masked lead file (it needs ph, lh and le columns).")
         store_pool(j, me["loginId"])
         return self.send(200, {"ok": True, "rows": len(j["rows"])})
+
+    def ai_route(self, me, method, p):
+        import ai
+        if p == "/api/ai/status" and method == "GET":
+            n = DBI.run("SELECT COUNT(*) AS n FROM ai_tags", fetch=True)[0]["n"]
+            return self.send(200, {"configured": ai.configured(), "model": ai.MODEL, "tagged": n, "themes": ai.THEMES, "run": _ai})
+        if p == "/api/ai/tags" and method == "GET":
+            rows = DBI.run("SELECT audit_id, field, theme, segment FROM ai_tags", fetch=True)
+            return self.send(200, {"tags": [{"auditId": r["audit_id"], "field": r["field"], "theme": r["theme"], "segment": r["segment"]} for r in rows]})
+        if p == "/api/ai/run" and method == "POST":
+            if not me["admin"]:
+                return self.err(403, "Only admins can run the AI categorisation.")
+            if not ai.configured():
+                return self.err(400, "AI isn't set up yet: add ANTHROPIC_API_KEY to /etc/callaudit.env and restart the service.")
+            with _build_lock:
+                if _ai.get("state") == "running":
+                    return self.err(409, "Categorisation is already running.")
+                _ai.clear()
+                _ai.update(state="running", message="Starting…", startedAt=now_iso(), by=me["loginId"])
+            threading.Thread(target=run_ai, args=(me["loginId"],), daemon=True).start()
+            return self.send(202, {"run": _ai})
+        return self.err(404, "Not found")
 
     def excel(self, me, method, p):
         """Excel files arrive in pieces (each under nginx's body limit), so file size is unlimited.

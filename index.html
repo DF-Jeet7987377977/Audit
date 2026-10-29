@@ -316,8 +316,23 @@ details.cmt li span{color:var(--mu);font-size:12px}
         <div><label class="lbl" for="rf-band">Talk-time band</label><select id="rf-band"></select></div>
         <div><label class="lbl" for="rf-src">Source</label><select id="rf-src"></select></div>
       </div>
-      <nav class="rp-nav" aria-label="Report sections"><a href="#rp-marketing">Marketing</a><a href="#rp-agent">Agent</a><a href="#rp-product">Product</a></nav>
+      <nav class="rp-nav" aria-label="Report sections"><a href="#rp-questions">Questions</a><a href="#rp-ai">AI themes</a><a href="#rp-marketing">Marketing</a><a href="#rp-agent">Agent</a><a href="#rp-product">Product</a></nav>
       <div id="rp-summary"></div>
+    </div>
+    <div class="card stack" id="rp-questions"></div>
+    <div class="card stack" id="rp-ai">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div style="min-width:0;flex:1 1 320px"><p class="eyebrow">AI themes</p><h2>What the comments are about</h2>
+          <p class="sub">Claude reads every free-text answer (call synopsis, the "why" answers and the issue comments) and gives each one a theme and a segment. Only the comment text is sent, with numbers and emails blanked out. Categories are saved, so only new or edited comments are sent again.</p></div>
+        <button class="btn primary" id="btn-ai-run" type="button" hidden>Categorise new comments</button>
+      </div>
+      <p class="muted" id="rp-ai-status" role="status" style="margin:0">Loading…</p>
+      <div class="row"><label class="lbl" for="rp-ai-field" style="margin:0">Show</label>
+        <select id="rp-ai-field" style="width:auto">
+          <option value="">All comments</option><option value="q12">Why the customer didn't buy (Q12)</option><option value="synopsis">Call synopsis</option>
+          <option value="q1Why">Why not interested at first (Q1)</option><option value="q3Why">Why not fully pitched (Q3)</option><option value="issue:">Issue comments</option>
+        </select></div>
+      <div id="rp-ai-body"></div>
     </div>
     <div class="card stack" id="rp-marketing"></div>
     <div class="card stack" id="rp-agent"></div>
@@ -691,7 +706,13 @@ function auditsByPhone() {
 let renderQueued = false;
 function render() {
   if (renderQueued) return; renderQueued = true;
-  requestAnimationFrame(() => {
+  // Next frame, or after 150 ms if the browser isn't painting frames (background windows), whichever is first.
+  let done = false;
+  const run = () => { if (done) return; done = true; doRender(); };
+  requestAnimationFrame(run); setTimeout(run, 150);
+}
+function doRender() {
+  {
     renderQueued = false;
     renderHeader();
     if (S.tab === "new") renderLookupState();
@@ -702,7 +723,7 @@ function render() {
     if (S.tab === "settings") renderSettings();
     if (S.tab === "users") renderUsers();
     if (S.openKey) renderDrawer();
-  });
+  }
 }
 function renderHeader() {
   const nAud = new Set([...S.audits.values()].map(a => a.uid)).size;
@@ -1289,12 +1310,15 @@ function renderReport(force) {
   if (!force && sig === reportSig) return;
   reportSig = sig;
   const R = reportData(rows), n = R.n;
+  S.reportRows = rows;
   $("#btn-report-xlsx").disabled = !n;
+  if (S.ai === undefined) loadAi(); else renderAiCard();
   if (!n) {
     $("#rp-summary").innerHTML = `<div class="empty"><b>${list.length ? "No audits match these filters" : "No audits yet"}</b>${list.length ? "Clear a filter to see the report." : "The report fills in as audits are submitted."}</div>`;
-    for (const id of ["rp-marketing", "rp-agent", "rp-product"]) $("#" + id).innerHTML = "";
+    for (const id of ["rp-questions", "rp-marketing", "rp-agent", "rp-product"]) $("#" + id).innerHTML = "";
     return;
   }
+  renderQuestions(rows, R);
   const mk = R.iss.marketing, ag = R.iss.agent, pr = R.iss.product, cu = R.iss.customer, ot = R.iss.other;
   $("#rp-summary").innerHTML = `<div class="tiles">
     ${tile("Audits in this report", fmtN(n), `${fmtN(R.leads)} leads · of ${fmtN(list.length)} audits in total`)}
@@ -1361,6 +1385,120 @@ function renderWhy() {
     : `<li class="muted" style="list-style:none">${q ? "No answers contain that." : "No answers yet."}</li>`;
 }
 
+/* ---------- Report: question by question ---------- */
+function ynCount(rows, q, withMaybe) {
+  const c = { Yes: 0, No: 0, Maybe: 0 };
+  for (const a of rows) { const v = a.d.answers?.[q]; if (v in c && (withMaybe || v !== "Maybe")) c[v]++; }
+  c.total = c.Yes + c.No + c.Maybe; return c;
+}
+const TEXT_QS = [["synopsis", "Call synopsis"], ["q1Why", "Q1: if No, why?"], ["q3Why", "Q3: if No, why?"], ["q12", "Q12: why did the customer not buy?"]];
+function questionData(rows) {
+  const n = rows.length;
+  const yn = [["q1", "Q1. Was the customer interested initially?", false], ["q2", "Q2. Did the customer understand DF Club Membership?", false],
+    ["q3", "Q3. Was the complete product pitched?", false], ["q5", "Q5. Would the customer buy the service(s) on their own?", true]]
+    .map(([q, label, m]) => ({ q, label, c: ynCount(rows, q, m), maybe: m }));
+  const issues = ["agent", "customer", "marketing", "product", "other"].map(k => {
+    const st = issueStats(rows, k);
+    return { key: k, label: segLabel(k), st, items: [{ label: NO_ISSUE, n: st.none }, ...st.items.map(i => ({ label: i.label, n: i.n }))].filter(i => i.n) };
+  });
+  const q6 = rows.filter(a => (a.d.answers?.q6 || "").trim()).length;
+  const texts = TEXT_QS.map(([f, label]) => ({ f, label, n: rows.filter(a => (a.d.answers?.[f] || "").trim()).length }));
+  return { n, yn, issues, q6, texts };
+}
+function renderQuestions(rows, R) {
+  const Q = questionData(rows), n = Q.n;
+  const ynRow = x => `<div class="splitrow"><span class="rbar-l" title="${esc(x.label)}">${esc(x.label)}</span>${splitHtml(x.c)}<span class="num muted">${fmtN(x.c.total)}</span></div>`;
+  $("#rp-questions").innerHTML = `<div><p class="eyebrow">Questions</p><h2>Answer share, question by question</h2>
+      <p class="sub">How auditors answered each question, as a share of the audits that answered it. The number on the right is how many answered.</p></div>
+    <div>${Q.yn.some(x => x.maybe) ? LEGEND5 : ""}<div class="rbars" style="margin-top:8px">${Q.yn.map(ynRow).join("")}</div>
+      ${tableHtml(["Question", "Answered", "Yes", "No", "Maybe"], Q.yn.map(x => [esc(x.label), fmtN(x.c.total), fmtPct(x.c.Yes, x.c.total), fmtPct(x.c.No, x.c.total), x.maybe ? fmtPct(x.c.Maybe, x.c.total) : "—"]))}</div>
+    <div class="grid2">
+      <div style="min-width:0"><p class="rp-h">Q4. Services of most interest <span class="muted">(share of audits; more than one allowed)</span></p>${barsHtml(R.services.map(s => ({ label: s.key, n: s.n })), n)}</div>
+      <div style="min-width:0"><p class="rp-h">Q6. Target city <span class="muted">(answered in ${fmtPct(Q.q6, n)} of audits)</span></p>${barsHtml(R.cities.slice(0, 8).map(c => ({ label: c.key, n: c.n })), n)}</div>
+    </div>
+    <div class="grid2">${Q.issues.map(x => `<div style="min-width:0"><p class="rp-h">${esc(x.label)} <span class="muted">(${fmtPct(x.st.withIssue, x.st.answered)} found an issue)</span></p>${barsHtml(x.items, x.st.answered || n)}</div>`).join("")}</div>
+    <div><p class="rp-h">Free-text answers</p>${tableHtml(["Question", "Answered", "% of audits"], Q.texts.map(t => [esc(t.label), fmtN(t.n), fmtPct(t.n, n)]))}</div>`;
+  S.reportQ = Q;
+}
+
+/* ---------- Report: AI themes ---------- */
+const AI_FIELD_LABEL = { synopsis: "Call synopsis", q1Why: "Why not interested at first (Q1)", q3Why: "Why not fully pitched (Q3)", q12: "Why the customer didn't buy (Q12)" };
+const aiFieldLabel = f => AI_FIELD_LABEL[f] || (f.startsWith("issue:") ? segLabel(f.slice(6)) + " comment" : f);
+function commentText(a, f) {
+  if (f.startsWith("issue:")) return a.d.answers?.issues?.[f.slice(6)]?.comment || "";
+  return a.d.answers?.[f] || "";
+}
+function aiItems(rows) {
+  const out = [], fields = [...Object.keys(AI_FIELD_LABEL), ...["agent", "customer", "marketing", "product", "other"].map(k => "issue:" + k)];
+  let untagged = 0;
+  for (const a of rows) for (const f of fields) {
+    const text = String(commentText(a, f)).trim(); if (!text) continue;
+    const t = S.ai?.tags?.get(a.key + "|" + f);
+    if (t) out.push({ f, theme: t.theme, segment: t.segment, text, a }); else untagged++;
+  }
+  return { items: out, untagged };
+}
+async function loadAi() {
+  if (!TOKEN || S.aiLoading) return;
+  S.aiLoading = true;
+  try {
+    const [st, tg] = await Promise.all([api("/ai/status"), api("/ai/tags")]);
+    S.ai = { st, tags: new Map(tg.tags.map(t => [String(t.auditId) + "|" + t.field, t])) };
+  } catch (e) { S.ai = { error: e.message, tags: new Map() }; }
+  finally { S.aiLoading = false; }
+  renderAiCard();
+  if (S.ai.st?.run?.state === "running") pollAi();
+}
+function pollAi() {
+  clearTimeout(S.aiPoll);
+  S.aiPoll = setTimeout(async () => {
+    try {
+      const st = await api("/ai/status"); S.ai.st = st;
+      if (st.run?.state === "running") { renderAiCard(); pollAi(); return; }
+      await loadAi(); toast("Comments categorised.");
+    } catch (e) { pollAi(); }
+  }, 3000);
+}
+function renderAiCard() {
+  const rows = S.reportRows || [], st = S.ai?.st, run = st?.run || {};
+  const btn = $("#btn-ai-run");
+  btn.hidden = !S.me.isOwner; btn.disabled = !st?.configured || run.state === "running";
+  let status = S.ai?.error ? "Couldn't load the AI categories: " + S.ai.error
+    : !S.ai ? "Loading…"
+    : !st.configured ? "AI isn't switched on yet. IT adds an Anthropic API key to the audit server (IT-SETUP.md), then an admin can run it."
+    : run.state === "running" ? `${run.message || "Categorising…"} (${fmtN(run.done || 0)} of ${fmtN(run.total || 0)})`
+    : run.state === "error" ? run.message
+    : run.state === "done" ? `${run.message} Last run ${fmtTs(Date.parse(run.finishedAt))}.`
+    : `${fmtN(st.tagged)} comments categorised so far.`;
+  $("#rp-ai-status").textContent = status;
+  const field = $("#rp-ai-field").value;
+  const { items: all, untagged } = aiItems(rows);
+  const items = all.filter(i => !field || (field === "issue:" ? i.f.startsWith("issue:") : i.f === field));
+  const body = $("#rp-ai-body");
+  if (!all.length) {
+    body.innerHTML = `<div class="empty"><b>No AI categories yet</b>${untagged ? `${fmtN(untagged)} comments in this filter are waiting to be categorised.${S.me.isOwner ? " Click Categorise new comments." : " An admin runs the categorisation."}` : "No free-text comments in this filter."}</div>`;
+    return;
+  }
+  const byTheme = groupBy(items, i => i.theme), bySeg = groupBy(items, i => i.segment);
+  body.innerHTML = `${untagged ? `<p class="muted" style="margin:0">${fmtN(untagged)} comments in this filter aren't categorised yet.</p>` : ""}
+    <div class="grid2">
+      <div style="min-width:0"><p class="rp-h">Themes <span class="muted">(${fmtN(items.length)} comments)</span></p>${barsHtml(byTheme.map(([k, g]) => ({ label: k, n: g.length })), items.length)}</div>
+      <div style="min-width:0"><p class="rp-h">By segment</p>${barsHtml(bySeg.map(([k, g]) => ({ label: k, n: g.length })), items.length)}
+        <p class="rp-h" style="margin-top:14px">Top theme per segment</p>${tableHtml(["Segment", "Comments", "Top theme"], bySeg.map(([k, g]) => [esc(k), fmtN(g.length), esc(groupBy(g, i => i.theme)[0][0])]))}</div>
+    </div>
+    <div><p class="rp-h">Comments by theme</p>${byTheme.map(([k, g]) => `<details class="cmt"><summary>${esc(k)} <span class="muted">(${g.length})</span></summary>
+      <ul>${g.slice(0, 200).map(i => `<li>${esc(i.text)} <span>— ${esc(aiFieldLabel(i.f))} · ${esc(i.segment)} · ${who(i.a)}</span></li>`).join("")}</ul></details>`).join("")}</div>`;
+}
+$("#rp-ai-field").addEventListener("change", renderAiCard);
+$("#btn-ai-run").addEventListener("click", async () => {
+  if (!S.me.isOwner) return;
+  $("#btn-ai-run").disabled = true;
+  try { const r = await api("/ai/run", { method: "POST", body: {} }); S.ai.st = { ...S.ai.st, run: r.run }; renderAiCard(); pollAi(); }
+  catch (e) { toast(e.message); $("#btn-ai-run").disabled = false; }
+});
+
+/* Blank out phone numbers and emails an auditor typed into a comment (same rule as the AI masking on the server). */
+const maskText = t => String(t).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email]").replace(/\d[\d\s-]{6,}\d/g, "[number]");
 /* ---- Excel download: aggregates and comments only, never phone numbers or Lead IDs ---- */
 function reportFilterText() {
   const parts = [];
@@ -1401,10 +1539,26 @@ $("#btn-report-xlsx").addEventListener("click", async () => {
     };
     const meta = a => [fmtTs(a.d.ts, false), nameOf(a.uid), agentOf(a), a.d.lead?.category || "", a.d.lead?.source || ""];
     const comments = [["Part", "Issue level 1", "Issue level 2", "Comment", "Date", "Auditor", "Agent", "Lead category", "Source"]];
-    for (const k of ["marketing", "agent", "other", "product", "customer"]) for (const i of R.iss[k].items) for (const c of i.comments) comments.push([segLabel(k), i.l1, i.label, c.text, ...meta(c.a)]);
+    for (const k of ["marketing", "agent", "other", "product", "customer"]) for (const i of R.iss[k].items) for (const c of i.comments) comments.push([segLabel(k), i.l1, i.label, maskText(c.text), ...meta(c.a)]);
     for (const [lab, list] of [["Why not bought (Q12)", R.why], ["Why not fully pitched (Q3)", R.q3why], ["Why not interested at first (Q1)", R.q1why]])
-      for (const c of list) comments.push([lab, "", "", c.text, ...meta(c.a)]);
+      for (const c of list) comments.push([lab, "", "", maskText(c.text), ...meta(c.a)]);
     sheets.Comments = comments;
+    // question-by-question shares
+    const Q = questionData(rows);
+    sheets.Questions = [["Question", "Answered", "Yes", "No", "Maybe", "Yes %", "No %", "Maybe %"],
+      ...Q.yn.map(x => [x.label, x.c.total, x.c.Yes, x.c.No, x.maybe ? x.c.Maybe : "", P(x.c.Yes, x.c.total), P(x.c.No, x.c.total), x.maybe ? P(x.c.Maybe, x.c.total) : ""]), [],
+      ["Q4. Services of most interest", "Audits", "% of audits"], ...R.services.map(s => [s.key, s.n, P(s.n, n)]), [],
+      ["Q6. Target city", "Audits", "% of audits"], ...R.cities.map(c => [c.key, c.n, P(c.n, n)]), [],
+      ...Q.issues.flatMap(x => [[x.label, "Audits", "% of answered"], ...x.items.map(i => [i.label, i.n, P(i.n, x.st.answered)]), []]),
+      ["Free-text answers", "Answered", "% of audits"], ...Q.texts.map(t => [t.label, t.n, P(t.n, n)])];
+    // AI themes (only when categories exist)
+    const { items: aiRows } = aiItems(rows);
+    if (aiRows.length) {
+      sheets["AI themes"] = [["Theme", "Comments", "% of categorised comments"], ...groupBy(aiRows, i => i.theme).map(([k, g]) => [k, g.length, P(g.length, aiRows.length)]), [],
+        ["Segment", "Comments", "% of categorised comments"], ...groupBy(aiRows, i => i.segment).map(([k, g]) => [k, g.length, P(g.length, aiRows.length)]), [],
+        ["Theme", "Segment", "Answer", "Comment", "Date", "Auditor", "Agent", "Lead category", "Source"],
+        ...aiRows.map(i => [i.theme, i.segment, aiFieldLabel(i.f), maskText(i.text), ...meta(i.a)])];
+    }
     const wb = XLSX.utils.book_new();
     for (const [name, aoa] of Object.entries(sheets)) {
       const ws = XLSX.utils.aoa_to_sheet(aoa);
