@@ -397,6 +397,7 @@ details.cmt li span{color:var(--mu);font-size:12px}
 const FORM_VERSION = 1;
 const BAND_ORDER = ["Up to 1 min", "1-5 min", "Over 5 min"];
 const NO_ISSUE = "No issue found";
+const Q4_NONE = "None";
 
 const S = {
   me: { id: null, isOwner: false, name: "", email: "" },
@@ -886,10 +887,10 @@ function buildForm(rec, phone) {
     <div><h2>Questionnaire</h2><p class="sub">Every question is required. In the issue sections, choose <b>${NO_ISSUE}</b> when nothing applies.</p></div>
     ${agentPick}
     ${qHtml("—", "synopsis", "Call synopsis: what happened across all calls on this lead", `<textarea id="f-synopsis" aria-labelledby="qt-synopsis" rows="4" placeholder="Summarise the conversations: what the customer asked, what the agent said, how it ended">${esc(A.synopsis || "")}</textarea>`)}
-    ${qHtml(1, "q1", "Was the customer interested initially?", ynHtml("f-q1", A.q1) + `<div data-why="q1"><label class="lbl" for="f-q1why">If No, why?</label><textarea id="f-q1why" rows="2">${esc(A.q1Why || "")}</textarea></div>`)}
-    ${qHtml(2, "q2", "Did the customer have understanding of DF Club Membership?", ynHtml("f-q2", A.q2))}
+    ${qHtml(1, "q1", "Did the customer show interest at the start of the call?", ynHtml("f-q1", A.q1) + `<div data-why="q1"><label class="lbl" for="f-q1why">If No, why?</label><textarea id="f-q1why" rows="2">${esc(A.q1Why || "")}</textarea></div>`)}
+    ${qHtml(2, "q2", "Did the customer clearly understand what DF Club Membership offers?", ynHtml("f-q2", A.q2))}
     ${qHtml(3, "q3", "Was the complete product pitched to the customer?", ynHtml("f-q3", A.q3) + `<div data-why="q3"><label class="lbl" for="f-q3why">If No, why?</label><textarea id="f-q3why" rows="2">${esc(A.q3Why || "")}</textarea></div>`)}
-    ${qHtml(4, "q4", "Which service did the customer have most interest in?", `<div class="svc" id="f-q4">${svcs.map((s, i) => `<label><input type="checkbox" id="f-q4-${i}" value="${esc(s)}" ${(A.q4 || []).includes(s) ? "checked" : ""}>${esc(s)}</label>`).join("")}</div>`)}
+    ${qHtml(4, "q4", "Which service did the customer have most interest in?", `<div class="svc" id="f-q4">${[...svcs.filter(s => s !== Q4_NONE), Q4_NONE].map((s, i) => `<label><input type="checkbox" id="f-q4-${i}" value="${esc(s)}" ${(A.q4 || []).includes(s) ? "checked" : ""}>${esc(s)}</label>`).join("")}</div>`)}
     ${qHtml(5, "q5", "If the above service(s) were sold independently, would the customer buy?", ynHtml("f-q5", A.q5, true))}
     ${qHtml(6, "q6", "Target City", `<input type="text" id="f-q6" aria-labelledby="qt-q6" placeholder="City the customer mentioned" value="${esc(A.q6 || "")}">`)}
     ${issues}
@@ -920,6 +921,9 @@ function syncWhy() {
 $("#audit-form").addEventListener("change", e => {
   if (e.target.dataset.l1) fillL2(e.target.dataset.l1);
   if (e.target.type === "radio") syncWhy();
+  // Q4 "None" can't be ticked together with a service
+  if (e.target.checked && e.target.closest("#f-q4"))
+    for (const i of document.querySelectorAll("#f-q4 input:checked")) if (i !== e.target && (i.value === Q4_NONE || e.target.value === Q4_NONE)) i.checked = false;
   const q = e.target.closest(".q"); if (q) q.classList.remove("err");
 });
 $("#audit-form").addEventListener("input", e => { const q = e.target.closest(".q"); if (q) q.classList.remove("err"); });
@@ -1062,8 +1066,8 @@ function renderDrawer(force) {
           <p class="sec-t">Agent</p>${dl("Agent on lead / heard on calls", `${L.agent || "—"} / ${d.agentAudited || "—"}`)}
           <p class="sec-t">Synopsis</p>${dl("What happened across the calls", A.synopsis)}
           <p class="sec-t">Questionnaire</p>
-          ${dl("1. Interested initially?", A.q1 + (A.q1Why ? " — " + A.q1Why : ""))}
-          ${dl("2. Understood DF Club Membership?", A.q2)}
+          ${dl("1. Interested at start of call?", A.q1 + (A.q1Why ? " — " + A.q1Why : ""))}
+          ${dl("2. Understood what DF Club offers?", A.q2)}
           ${dl("3. Complete product pitched?", A.q3 + (A.q3Why ? " — " + A.q3Why : ""))}
           ${dl("4. Services of most interest", (A.q4 || []).join(", "))}
           ${dl("5. Would buy if sold independently?", A.q5)}
@@ -1322,8 +1326,8 @@ function renderReport(force) {
   const mk = R.iss.marketing, ag = R.iss.agent, pr = R.iss.product, cu = R.iss.customer, ot = R.iss.other;
   $("#rp-summary").innerHTML = `<div class="tiles">
     ${tile("Audits in this report", fmtN(n), `${fmtN(R.leads)} leads · of ${fmtN(list.length)} audits in total`)}
-    ${tile("Interested initially", fmtPct(R.q1.y, R.q1.n), `Q1, ${fmtN(R.q1.y)} of ${fmtN(R.q1.n)} said Yes`)}
-    ${tile("Understood DF Club", fmtPct(R.q2.y, R.q2.n), `Q2, ${fmtN(R.q2.y)} of ${fmtN(R.q2.n)}`)}
+    ${tile("Interested at start", fmtPct(R.q1.y, R.q1.n), `Q1, ${fmtN(R.q1.y)} of ${fmtN(R.q1.n)} said Yes`)}
+    ${tile("Understood DF Club offer", fmtPct(R.q2.y, R.q2.n), `Q2, ${fmtN(R.q2.y)} of ${fmtN(R.q2.n)}`)}
     ${tile("Complete product pitched", fmtPct(R.q3.y, R.q3.n), `Q3, ${fmtN(R.q3.y)} of ${fmtN(R.q3.n)}`)}
     <div class="tile"><div class="k">Would buy a single service</div><div style="margin:8px 0 6px">${splitHtml(R.q5)}</div><div class="s num">Yes ${fmtPct(R.q5.Yes, R.q5.total)} · No ${fmtPct(R.q5.No, R.q5.total)} · Maybe ${fmtPct(R.q5.Maybe, R.q5.total)}</div></div>
     ${tile("Top issues", "", `<b>Marketing:</b> ${esc(mk.items[0]?.label || "—")}<br><b>Agent:</b> ${esc(ag.items[0]?.label || "—")}<br><b>Product:</b> ${esc(pr.items[0]?.label || "—")}`)}
@@ -1332,7 +1336,7 @@ function renderReport(force) {
   $("#rp-marketing").innerHTML = `<div><p class="eyebrow">Marketing</p><h2>What's going wrong with the leads</h2>
       <p class="sub">${fmtN(mk.withIssue)} of ${fmtN(n)} audits (${fmtPct(mk.withIssue, n)}) found a marketing issue. ${fmtN(mk.none)} said no marketing issue.</p></div>
     <div><p class="rp-h">Marketing issues</p>${issueBars(mk, n)}</div>
-    <div><p class="rp-h">By source</p>${tableHtml(["Source", "Audits", "Marketing issue", "Interested initially", "Top marketing issue"],
+    <div><p class="rp-h">By source</p>${tableHtml(["Source", "Audits", "Marketing issue", "Interested at start", "Top marketing issue"],
       R.bySource.map(r => [esc(r.key), fmtN(r.n), fmtPct(r.mkt, r.n), fmtPct(r.q1.y, r.q1.n), esc(r.top)]))}</div>
     <div><p class="rp-h">By campaign <span class="muted">(top 15 by audits)</span></p>${tableHtml(["Campaign", "Audits", "Marketing issue", "Top marketing issue"],
       R.byCampaign.map(r => [esc(r.key), fmtN(r.n), fmtPct(r.mkt, r.n), esc(r.top)]))}</div>
@@ -1347,7 +1351,7 @@ function renderReport(force) {
 
   $("#rp-agent").innerHTML = `<div><p class="eyebrow">Agent</p><h2>What happened on the calls</h2>
       <p class="sub">${fmtN(ag.withIssue)} of ${fmtN(n)} audits (${fmtPct(ag.withIssue, n)}) found an agent issue. The complete product was pitched on ${fmtPct(R.q3.y, R.q3.n)} of audited leads.</p></div>
-    <div><p class="rp-h">Agents</p>${tableHtml(["Agent", "Audits", "Agent issue", "Complete pitch", "Customer understood", "Interested initially", "Top agent issue"],
+    <div><p class="rp-h">Agents</p>${tableHtml(["Agent", "Audits", "Agent issue", "Complete pitch", "Customer understood", "Interested at start", "Top agent issue"],
       R.agents.map(r => [esc(r.key), fmtN(r.n), fmtPct(r.iss, r.n), fmtPct(r.q3.y, r.q3.n), fmtPct(r.q2.y, r.q2.n), fmtPct(r.q1.y, r.q1.n), esc(r.top)]))}</div>
     <div class="grid2">
       <div style="min-width:0"><p class="rp-h">${esc(segLabel("agent"))}s</p>${issueBars(ag, n)}</div>
@@ -1394,7 +1398,7 @@ function ynCount(rows, q, withMaybe) {
 const TEXT_QS = [["synopsis", "Call synopsis"], ["q1Why", "Q1: if No, why?"], ["q3Why", "Q3: if No, why?"], ["q12", "Q12: why did the customer not buy?"]];
 function questionData(rows) {
   const n = rows.length;
-  const yn = [["q1", "Q1. Was the customer interested initially?", false], ["q2", "Q2. Did the customer understand DF Club Membership?", false],
+  const yn = [["q1", "Q1. Did the customer show interest at the start of the call?", false], ["q2", "Q2. Did the customer clearly understand what DF Club Membership offers?", false],
     ["q3", "Q3. Was the complete product pitched?", false], ["q5", "Q5. Would the customer buy the service(s) on their own?", true]]
     .map(([q, label, m]) => ({ q, label, c: ynCount(rows, q, m), maybe: m }));
   const issues = ["agent", "customer", "marketing", "product", "other"].map(k => {
@@ -1516,20 +1520,20 @@ $("#btn-report-xlsx").addEventListener("click", async () => {
     const sheets = {
       Summary: [["DreamFolks Call Audit report"], ["Filter", reportFilterText()], ["Generated", fmtTs(Date.now())], [],
         ["Audits", n], ["Leads covered", R.leads],
-        ["Interested initially (Q1 Yes) %", P(R.q1.y, R.q1.n)], ["Understood DF Club (Q2 Yes) %", P(R.q2.y, R.q2.n)], ["Complete product pitched (Q3 Yes) %", P(R.q3.y, R.q3.n)],
+        ["Interested at start (Q1 Yes) %", P(R.q1.y, R.q1.n)], ["Understood DF Club offer (Q2 Yes) %", P(R.q2.y, R.q2.n)], ["Complete product pitched (Q3 Yes) %", P(R.q3.y, R.q3.n)],
         ["Would buy a single service (Q5)", "Yes", R.q5.Yes, "No", R.q5.No, "Maybe", R.q5.Maybe],
         ["Audits with a marketing issue %", P(R.iss.marketing.withIssue, n)], ["Audits with an agent issue %", P(R.iss.agent.withIssue, n)],
         ["Audits with a product issue %", P(R.iss.product.withIssue, n)], ["Audits with a customer issue %", P(R.iss.customer.withIssue, n)],
         ["Top marketing issue", R.iss.marketing.items[0]?.label || ""], ["Top agent issue", R.iss.agent.items[0]?.label || ""],
         ["Top product issue", R.iss.product.items[0]?.label || ""], ["Top customer issue", R.iss.customer.items[0]?.label || ""]],
       Marketing: [["Marketing issues"], ...issueRows(R.iss.marketing), [],
-        ["By source"], ["Source", "Audits", "With marketing issue", "Marketing issue %", "Interested initially %", "Top marketing issue"], ...R.bySource.map(r => [r.key, r.n, r.mkt, P(r.mkt, r.n), P(r.q1.y, r.q1.n), r.top]), [],
+        ["By source"], ["Source", "Audits", "With marketing issue", "Marketing issue %", "Interested at start %", "Top marketing issue"], ...R.bySource.map(r => [r.key, r.n, r.mkt, P(r.mkt, r.n), P(r.q1.y, r.q1.n), r.top]), [],
         ["By campaign (top 15)"], ["Campaign", "Audits", "With marketing issue", "Marketing issue %", "Top marketing issue"], ...R.byCampaign.map(r => [r.key, r.n, r.mkt, P(r.mkt, r.n), r.top]), [],
         ["Ads with the most marketing issues"], ["Ad", "Ad set", "Marketing issues", "Top issue"], ...R.byAd.map(r => [r.key, r.adset, r.n, r.top]), [],
         ["By city (CRM, top 12)"], ["City", "Audits", "With marketing issue", "Marketing issue %"], ...R.byCity.map(r => [r.key, r.n, r.mkt, P(r.mkt, r.n)]), [],
         ["By lead category and talk-time band"], ["Lead category", "Talk-time band", "Audits", "With marketing issue", "Marketing issue %"],
         ...R.catBand.flatMap(r => r.cells.filter(c => c.n).map(c => [r.cat, c.band, c.n, c.mkt, P(c.mkt, c.n)]))],
-      Agents: [["Agents"], ["Agent", "Audits", "With agent issue", "Agent issue %", "Complete pitch %", "Customer understood %", "Interested initially %", "Top agent issue"],
+      Agents: [["Agents"], ["Agent", "Audits", "With agent issue", "Agent issue %", "Complete pitch %", "Customer understood %", "Interested at start %", "Top agent issue"],
         ...R.agents.map(r => [r.key, r.n, r.iss, P(r.iss, r.n), P(r.q3.y, r.q3.n), P(r.q2.y, r.q2.n), P(r.q1.y, r.q1.n), r.top]), [],
         ["Agent issues"], ...issueRows(R.iss.agent), [], ["Other issues (call quality)"], ...issueRows(R.iss.other)],
       Product: [["Services of interest (Q4) and would they buy it alone (Q5)"], ["Service", "Interested", "% of audits", "Q5 Yes", "Q5 No", "Q5 Maybe"],
@@ -1707,8 +1711,8 @@ $("#btn-export").addEventListener("click", async () => {
         "Talk Time (min)": L.talkTimeMin, "R1": L.r1, "R2": L.r2, "Total Dials": L.totalDials, "Ever Connected": L.everConnected,
         "Lead Created": L.leadCreated, "Source": L.source, "City (CRM)": L.city, "Campaign": L.campaign, "Ad Set": L.adset, "Ad": L.ad,
         "Total Calls": L.totalCalls, "Connected Calls": L.connectedCalls, "First Call": L.firstCall, "Last Call": L.lastCall,
-        "Call Synopsis": A.synopsis, "Q1 Interested Initially": A.q1, "Q1 If No, Why": A.q1Why,
-        "Q2 Understood DF Club": A.q2, "Q3 Complete Product Pitched": A.q3, "Q3 If No, Why": A.q3Why,
+        "Call Synopsis": A.synopsis, "Q1 Interested at Start": A.q1, "Q1 If No, Why": A.q1Why,
+        "Q2 Understood DF Club Offer": A.q2, "Q3 Complete Product Pitched": A.q3, "Q3 If No, Why": A.q3Why,
         "Q4 Services of Interest": (A.q4 || []).join(", "), "Q5 Would Buy Standalone": A.q5, "Q6 Target City": A.q6,
       };
       const keys = secs.length ? secs : Object.keys(A.issues || {}).map(k => ({ key: k, label: k }));
